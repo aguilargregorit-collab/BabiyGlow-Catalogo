@@ -9,6 +9,7 @@ const money = (v: number) => new Intl.NumberFormat('es-VE', { style: 'currency',
 export default function CatalogPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [query, setQuery] = useState('');
+  const [sortBy, setSortBy] = useState<'recent' | 'name' | 'price-asc' | 'price-desc' | 'stock-desc' | 'stock-asc'>('recent');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [notices, setNotices] = useState<Notice[]>([]);
@@ -55,7 +56,19 @@ export default function CatalogPage() {
     return () => { void supabase?.removeChannel(channel); };
   }, [loadProducts, addNotice]);
 
-  const filtered = useMemo(() => products.filter(p => `${p.name} ${p.description || ''}`.toLowerCase().includes(query.trim().toLowerCase())), [products, query]);
+  const filtered = useMemo(() => {
+    const matching = products.filter(p => `${p.name} ${p.description || ''}`.toLowerCase().includes(query.trim().toLowerCase()));
+    return [...matching].sort((a, b) => {
+      if (sortBy === 'name') return a.name.localeCompare(b.name, 'es', { sensitivity: 'base' });
+      if (sortBy === 'price-asc') return Number(a.price || 0) - Number(b.price || 0);
+      if (sortBy === 'price-desc') return Number(b.price || 0) - Number(a.price || 0);
+      if (sortBy === 'stock-desc') return Number(b.quantity || 0) - Number(a.quantity || 0);
+      if (sortBy === 'stock-asc') return Number(a.quantity || 0) - Number(b.quantity || 0);
+      const dateA = new Date(a.created_at || a.entry_date || 0).getTime() || 0;
+      const dateB = new Date(b.created_at || b.entry_date || 0).getTime() || 0;
+      return dateB - dateA;
+    });
+  }, [products, query, sortBy]);
   const enableNotifications = async () => {
     if (!('Notification' in window)) { setPermission('unsupported'); return; }
     const result = await Notification.requestPermission(); setPermission(result);
@@ -81,7 +94,7 @@ export default function CatalogPage() {
     <section className="hero" id="inicio"><div className="hero-content"><span className="eyebrow"><span/> EL UNIVERSO BABI & GLOW</span><h1>Tu próximo favorito<br/>está <em>por descubrir.</em></h1><p>Explora nuestra selección de belleza y cuidado personal. Mira precios, detalles y disponibilidad actualizados desde nuestro inventario.</p><a className="hero-link" href="#catalogo">Explorar productos <span>↓</span></a></div><div className="hero-art"><div className="hero-orbit orbit-one"/><div className="hero-orbit orbit-two"/><div className="hero-glow"><img src="/logo-babi-glow.jpg" alt="Babi&Glow"/></div><div className="floating-tag tag-top">your daily ritual ✦</div><div className="floating-tag tag-bottom">beauty essentials</div></div><div className="hero-caption">BELLEZA EN CADA DETALLE <span>✦</span></div></section>
 
     <section className="catalog-section" id="catalogo"><div className="section-heading"><div><span className="eyebrow">NUESTRA SELECCIÓN</span><h2>Encuentra tu <em>glow.</em></h2><p>Productos seleccionados para realzar tu esencia.</p></div><div className="catalog-meta"><span className="stock-indicator"><span className="live-dot"/> Actualización en tiempo real</span><strong>{products.length} <small>{products.length === 1 ? 'producto' : 'productos'}</small></strong></div></div>
-      <div className="catalog-tools"><label className="search-box"><Search size={18}/><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Buscar por nombre o característica..."/><kbd>⌕</kbd></label><button className="refresh-button" onClick={() => { setLoading(true); void loadProducts(); }}><RefreshCw size={16}/> Actualizar</button></div>
+      <div className="catalog-tools"><label className="search-box"><Search size={18}/><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Buscar por nombre o característica..."/><kbd>⌕</kbd></label><label className="sort-box"><span>Ordenar:</span><select value={sortBy} onChange={e => setSortBy(e.target.value as typeof sortBy)} aria-label="Filtrar productos"><option value="recent">Más recientes</option><option value="name">Nombre (A-Z)</option><option value="price-asc">Precio: menor a mayor</option><option value="price-desc">Precio: mayor a menor</option><option value="stock-desc">Stock: mayor a menor</option><option value="stock-asc">Stock: menor a mayor</option></select></label><button className="refresh-button" onClick={() => { setLoading(true); void loadProducts(); }}><RefreshCw size={16}/> Actualizar</button></div>
       {error && <div className="error-banner">{error}</div>}
       {loading ? <div className="loading-grid">{[1,2,3,4].map(n => <div className="skeleton-card" key={n}><div/><span/><span/></div>)}</div> : filtered.length === 0 ? <div className="empty-state"><div className="empty-symbol"><PackageOpen size={27}/></div><h3>{query ? 'No encontramos coincidencias' : 'Pronto habrá algo especial'}</h3><p>{query ? 'Prueba con otro nombre o característica.' : 'Los nuevos productos aparecerán aquí automáticamente cuando se agreguen al inventario.'}</p>{query && <button className="text-button" onClick={() => setQuery('')}>Limpiar búsqueda</button>}</div> : <div className="product-grid">{filtered.map(p => <article className="product-card" key={p.id}><div className="product-image">{p.image_url ? <img src={p.image_url} alt={p.name} loading="lazy"/> : <div className="image-placeholder"><span>B<span>&</span>G</span><small>BEAUTY ESSENTIALS</small></div>}{p.created_at && Date.now() - new Date(p.created_at).getTime() < 7 * 86400000 && <span className="new-badge">NUEVO ✦</span>}{p.quantity <= 0 && <span className="sold-badge">AGOTADO</span>}</div><div className="product-info"><span className="product-category">BABI & GLOW · BEAUTY</span><h3>{p.name}</h3><p className="product-description">{p.description || 'Un esencial para tu rutina de belleza.'}</p><div className="product-bottom"><div><strong className="price">{money(p.price)}</strong><small className={p.quantity > 0 ? 'available' : 'unavailable'}>{p.quantity > 0 ? `${p.quantity} disponibles` : 'Sin existencias'}</small></div><span className="product-sparkle"><Sparkles size={17}/></span></div><a className="buy-button" href={purchaseWhatsAppUrl(p.name)} target="_blank" rel="noopener noreferrer" aria-label={`Consultar compra de ${p.name} por WhatsApp`}><MessageCircle size={16}/> Comprar por WhatsApp</a></div></article>)}</div>}
       <div className="catalog-footnote"><Radio size={15}/><span>El catálogo se sincroniza automáticamente con el inventario principal.</span></div>
