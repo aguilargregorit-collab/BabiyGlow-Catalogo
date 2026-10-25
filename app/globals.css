@@ -84,3 +84,107 @@ body,.page-shell{background:var(--cream);color:var(--ink)}
 .buy-button:hover{background:#ad3977;transform:translateY(-1px);box-shadow:0 7px 16px #c64f8d2b}
 .buy-button svg{flex-shrink:0}
 @media(max-width:700px){.buy-button{font-size:10px;padding:10px 7px;gap:6px;margin-top:11px}.buy-button svg{width:14px;height:14px}}
+
+/* Babi&Glow · acabado más simple, delicado y ligero */
+:root{--wine:#ad397c;--wine2:#962d6a;--pink:#d95a9d;--blush:#f9e7f0;--cream:#fff8ef;--gold:#e8cbd7;--ink:#493542;--muted:#8f7a86;--line:#f0dfe7;--white:#fffdfb}
+body,.page-shell{background:#fff8ef;color:#493542}
+.announcement{height:28px;background:#f7e4ed;color:#9d3970;font-size:9px;letter-spacing:.04em}
+.announcement svg{color:#d95a9d}
+.topbar{height:76px;background:#fffdf9;border-bottom:1px solid #f1e3e8}
+.brand-logo{object-fit:cover;border-radius:50%;border:1px solid #f0dce5}
+.brand-copy strong{color:#ad397c;letter-spacing:.15em}
+.hero{margin:22px clamp(16px,4vw,55px) 0;padding:clamp(25px,4vw,48px);min-height:300px;border:1px solid #f0dfe7;border-radius:18px;background:#fbedf3;box-shadow:none;grid-template-columns:1.15fr .85fr}
+.hero h1{font-size:clamp(32px,4.4vw,54px);line-height:1.12;letter-spacing:-.035em;color:#9e3971}
+.hero h1 em,.section-heading h2 em{color:#d95a9d;font-weight:500}
+.hero-content>p{max-width:460px;font-size:13px;line-height:1.8;color:#806d79}
+.eyebrow{font-size:9px;letter-spacing:.13em;color:#c64d8b}
+.hero-link{display:inline-flex;margin-top:8px;padding:11px 17px;background:#c64d8b;color:white;border-radius:8px;box-shadow:none;font-size:11px}
+.hero-link:hover{background:#ad397c;transform:translateY(-1px)}
+.hero-orbit{border-color:#edcbdc;opacity:.65}.orbit-two{border-color:#e8c2d5}
+.hero-glow{box-shadow:none;border:1px solid #efd6e2;background:#fff8f4}
+.floating-tag{box-shadow:none;border:1px solid #f0dce5;background:#fffaf6;color:#a8427b;border-radius:8px;font-size:9px}
+.hero-caption{font-size:8px;letter-spacing:.12em;color:#a66b8a}
+.catalog-section{padding-top:42px}
+.section-heading h2{font-size:clamp(27px,3vw,36px);letter-spacing:-.025em;color:#9e3971}
+.section-heading p{color:#8f7a86;font-size:12px}
+.search-box,.refresh-button{border:1px solid #eedde5;background:#fffdf9;border-radius:9px;box-shadow:none}
+.search-box:focus-within{border-color:#d95a9d;box-shadow:0 0 0 3px #d95a9d12}
+.refresh-button{font-size:11px}
+.product-grid{gap:18px}
+.product-card{border:1px solid #f0e2e8;border-radius:12px;background:#fffdfb;box-shadow:none;overflow:hidden}
+.product-card:hover{transform:translateY(-2px);box-shadow:0 7px 18px #9e39710c;border-color:#e9c8d8}
+.product-image{background:#fbf0f4}
+.product-info{padding:15px}
+.product-category{font-size:8px;letter-spacing:.09em;color:#b76a91}
+.product-info h3{font-size:17px;color:#613b52;font-weight:600}
+.product-description{font-size:11px;line-height:1.7;color:#887582}
+.product-bottom{border-top:1px solid #f4e8ed;padding-top:12px}
+.price{font-size:17px;color:#ad397c}
+.product-sparkle{display:none}
+.new-badge,.sold-badge{font-size:8px;letter-spacing:.04em;box-shadow:none}
+.buy-button{margin-top:12px;background:#c64d8b;border-radius:8px;box-shadow:none;font-size:11px;padding:11px 12px;letter-spacing:0}
+.buy-button:hover{background:#ad397c;box-shadow:none;transform:translateY(-1px)}
+.catalog-footnote{font-size:10px;color:#927c89}
+.notify-strip{background:#f8e6ee;border:1px solid #f0dce5;border-radius:12px;box-shadow:none;color:#6c4058}
+.notify-icon{background:#fff8f1;color:#bd4d89}
+.notify-strip .eyebrow{color:#bd4d89}
+.notify-strip h2{font-size:22px;color:#9e3971}
+.notify-strip p{color:#806d79}
+.notify-strip button{background:#c64d8b;color:white;border-radius:8px;box-shadow:none}
+.contact-strip{background:#fffdf9;border:1px solid #f0dfe7;border-radius:12px;box-shadow:none}
+.contact-copy h2{font-size:clamp(22px,2.5vw,28px);color:#9e3971}
+.contact-copy p{color:#887582}
+.contact-button{border-radius:8px;box-shadow:none;font-weight:600}
+.whatsapp-button{background:#4b8d6a}
+.instagram-button{background:#f9e7f0;color:#a83e79;border:1px solid #efd4e1}
+.footer{background:#fffdf9;border-top:1px solid #f0dfe7}
+.notice-panel{border-radius:12px;box-shadow:0 10px 32px #6d365315}
+.enable-notices{background:#c64d8b;border-radius:8px}
+@media(max-width:700px){
+ .announcement{height:27px;font-size:8px}
+ .topbar{height:66px}
+ .hero{margin:14px 12px 0;padding:22px 18px 27px;gap:0;border-radius:13px;grid-template-columns:1fr;background:#fbedf3}
+ .hero h1{font-size:34px;margin:11px 0}
+ .hero-content>p{font-size:11px;line-height:1.75}
+ .hero-art{height:175px;margin-top:2px}
+ .hero-orbit{width:170px;height:170px}.orbit-two{width:195px;height:145px}
+ .hero-glow{width:118px;height:118px}
+ .floating-tag{font-size:8px;padding:6px 8px}
+ .hero-caption{font-size:7px;bottom:7px}
+ .catalog-section{padding:29px 12px 22px}
+ .section-heading h2{font-size:26px}
+ .product-grid,.loading-grid{gap:10px}
+ .product-card{border-radius:10px}
+ .product-info{padding:10px}
+ .product-info h3{font-size:14px;line-height:1.35}
+ .product-description{font-size:10px;line-height:1.55;min-height:38px}
+ .price{font-size:14px}
+ .buy-button{font-size:9px;padding:10px 5px;gap:5px;border-radius:7px}
+ .notify-strip{background:#f8e6ee;border-radius:11px}
+ .contact-strip{border-radius:11px}
+}
+
+/* Ordenamiento del catálogo: discreto, delicado y adaptable */
+.sort-box{height:44px;display:flex;align-items:center;gap:8px;padding:0 12px;background:#fffdf9;border:1px solid #eedde5;border-radius:9px;color:#927786;white-space:nowrap}
+.sort-box span{font-size:11px}
+.sort-box select{max-width:210px;border:0;outline:0;background:transparent;color:#ad397c;font:inherit;font-size:11px;cursor:pointer;min-width:0}
+.sort-box:focus-within{border-color:#d95a9d;box-shadow:0 0 0 3px #d95a9d12}
+@media(max-width:700px){.catalog-tools{flex-wrap:wrap}.catalog-tools .search-box{flex:1 1 100%;width:100%}.sort-box{flex:1;min-width:0;height:41px;padding:0 9px;gap:5px}.sort-box span{font-size:10px}.sort-box select{flex:1;max-width:100%;font-size:10px}.catalog-tools .refresh-button{height:41px}}
+
+/* Aviso inicial para activar notificaciones: solo se muestra una vez por navegador */
+.notification-modal-backdrop{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(62,35,50,.42);backdrop-filter:blur(3px)}
+.notification-modal{position:relative;width:min(100%,420px);padding:32px 28px 25px;border:1px solid #f0d8e4;border-radius:18px;background:#fffaf5;text-align:center;box-shadow:0 18px 60px rgba(90,43,68,.2);animation:notificationModalIn .22s ease-out}
+.notification-modal-close{position:absolute;top:12px;right:12px;display:grid;place-items:center;width:34px;height:34px;border:0;border-radius:50%;background:#f9e7f0;color:#a64279;cursor:pointer}
+.notification-modal-icon{width:58px;height:58px;margin:0 auto 16px;display:grid;place-items:center;border-radius:50%;background:#f9e7f0;color:#c64d8b}
+.notification-modal .eyebrow{display:block;margin-bottom:9px}
+.notification-modal h2{margin:0 auto 10px;color:#9e3971;font-size:25px;line-height:1.2;letter-spacing:-.025em}
+.notification-modal p{margin:0 auto 20px;max-width:320px;color:#806d79;font-size:13px;line-height:1.75}
+.notification-modal-activate,.notification-modal-later{width:100%;min-height:44px;display:flex;align-items:center;justify-content:center;gap:8px;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer}
+.notification-modal-activate{border:1px solid #c64d8b;background:#c64d8b;color:white}
+.notification-modal-activate:hover{background:#ad397c}
+.notification-modal-later{margin-top:8px;border:1px solid #efdce5;background:transparent;color:#9b6a83}
+.notification-modal small{display:block;margin-top:15px;color:#a28d98;font-size:10px}
+.notification-modal-help{padding:10px;border-radius:9px;background:#f9e7f0;font-size:12px!important}
+@keyframes notificationModalIn{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+@media(max-width:480px){.notification-modal{padding:29px 21px 22px;border-radius:15px}.notification-modal h2{font-size:23px}.notification-modal p{font-size:12px}}
+@media(prefers-reduced-motion:reduce){.notification-modal{animation:none}}
