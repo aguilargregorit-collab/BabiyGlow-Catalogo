@@ -170,3 +170,21 @@ body,.page-shell{background:#fff8ef;color:#493542}
 .sort-box select{max-width:210px;border:0;outline:0;background:transparent;color:#ad397c;font:inherit;font-size:11px;cursor:pointer;min-width:0}
 .sort-box:focus-within{border-color:#d95a9d;box-shadow:0 0 0 3px #d95a9d12}
 @media(max-width:700px){.catalog-tools{flex-wrap:wrap}.catalog-tools .search-box{flex:1 1 100%;width:100%}.sort-box{flex:1;min-width:0;height:41px;padding:0 9px;gap:5px}.sort-box span{font-size:10px}.sort-box select{flex:1;max-width:100%;font-size:10px}.catalog-tools .refresh-button{height:41px}}
+
+/* Aviso inicial para activar notificaciones: solo se muestra una vez por navegador */
+.notification-modal-backdrop{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(62,35,50,.42);backdrop-filter:blur(3px)}
+.notification-modal{position:relative;width:min(100%,420px);padding:32px 28px 25px;border:1px solid #f0d8e4;border-radius:18px;background:#fffaf5;text-align:center;box-shadow:0 18px 60px rgba(90,43,68,.2);animation:notificationModalIn .22s ease-out}
+.notification-modal-close{position:absolute;top:12px;right:12px;display:grid;place-items:center;width:34px;height:34px;border:0;border-radius:50%;background:#f9e7f0;color:#a64279;cursor:pointer}
+.notification-modal-icon{width:58px;height:58px;margin:0 auto 16px;display:grid;place-items:center;border-radius:50%;background:#f9e7f0;color:#c64d8b}
+.notification-modal .eyebrow{display:block;margin-bottom:9px}
+.notification-modal h2{margin:0 auto 10px;color:#9e3971;font-size:25px;line-height:1.2;letter-spacing:-.025em}
+.notification-modal p{margin:0 auto 20px;max-width:320px;color:#806d79;font-size:13px;line-height:1.75}
+.notification-modal-activate,.notification-modal-later{width:100%;min-height:44px;display:flex;align-items:center;justify-content:center;gap:8px;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer}
+.notification-modal-activate{border:1px solid #c64d8b;background:#c64d8b;color:white}
+.notification-modal-activate:hover{background:#ad397c}
+.notification-modal-later{margin-top:8px;border:1px solid #efdce5;background:transparent;color:#9b6a83}
+.notification-modal small{display:block;margin-top:15px;color:#a28d98;font-size:10px}
+.notification-modal-help{padding:10px;border-radius:9px;background:#f9e7f0;font-size:12px!important}
+@keyframes notificationModalIn{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+@media(max-width:480px){.notification-modal{padding:29px 21px 22px;border-radius:15px}.notification-modal h2{font-size:23px}.notification-modal p{font-size:12px}}
+@media(prefers-reduced-motion:reduce){.notification-modal{animation:none}}

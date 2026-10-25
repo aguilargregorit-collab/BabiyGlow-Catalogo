@@ -15,6 +15,7 @@ export default function CatalogPage() {
   const [notices, setNotices] = useState<Notice[]>([]);
   const [permission, setPermission] = useState<NotificationPermission | 'unsupported'>('default');
   const [showNotices, setShowNotices] = useState(false);
+  const [showWelcomePrompt, setShowWelcomePrompt] = useState(false);
   const [connected, setConnected] = useState(false);
 
   const loadProducts = useCallback(async () => {
@@ -35,7 +36,10 @@ export default function CatalogPage() {
 
   useEffect(() => {
     if (typeof window !== 'undefined' && 'serviceWorker' in navigator) { navigator.serviceWorker.register('/sw.js').catch(() => undefined); }
-    if (typeof window !== 'undefined') setPermission('Notification' in window ? Notification.permission : 'unsupported');
+    if (typeof window !== 'undefined') {
+      setPermission('Notification' in window ? Notification.permission : 'unsupported');
+      try { if (!window.localStorage.getItem('babiglow-notification-prompt-seen')) setShowWelcomePrompt(true); } catch { /* Si el almacenamiento está bloqueado, no impedimos usar el catálogo. */ }
+    }
     void loadProducts();
     if (!supabase) return;
     const channel = supabase.channel('catalog-products-live')
@@ -69,9 +73,14 @@ export default function CatalogPage() {
       return dateB - dateA;
     });
   }, [products, query, sortBy]);
+  const closeWelcomePrompt = () => {
+    setShowWelcomePrompt(false);
+    try { window.localStorage.setItem('babiglow-notification-prompt-seen', '1'); } catch {}
+  };
   const enableNotifications = async () => {
-    if (!('Notification' in window)) { setPermission('unsupported'); return; }
+    if (!('Notification' in window)) { setPermission('unsupported'); closeWelcomePrompt(); return; }
     const result = await Notification.requestPermission(); setPermission(result);
+    closeWelcomePrompt();
     if (result === 'granted') {
       try { new Notification('Babi & Glow', { body: '¡Listo! Te avisaremos cuando se agreguen productos mientras tengas abierto el catálogo.', icon: '/icons/icon-192.png' }); } catch {}
     }
@@ -83,6 +92,7 @@ export default function CatalogPage() {
   };
 
   return <main className="page-shell">
+    {showWelcomePrompt && <div className="notification-modal-backdrop" role="presentation"><section className="notification-modal" role="dialog" aria-modal="true" aria-labelledby="notification-modal-title"><button className="notification-modal-close" onClick={closeWelcomePrompt} aria-label="Cerrar aviso"><X size={18}/></button><div className="notification-modal-icon"><BellRing size={27}/></div><span className="eyebrow">NOVEDADES BABI & GLOW</span><h2 id="notification-modal-title">¡No te pierdas ningún producto!</h2><p>Activa las notificaciones para que no te pierdas ningún producto y puedas enterarte de las novedades de Babi&Glow.</p>{permission === 'unsupported' ? <p className="notification-modal-help">Este navegador no permite notificaciones. Puedes seguir explorando el catálogo normalmente.</p> : permission === 'denied' ? <p className="notification-modal-help">Las notificaciones están bloqueadas en tu navegador. Puedes habilitarlas desde los permisos del sitio.</p> : <button className="notification-modal-activate" onClick={() => void enableNotifications()}><Bell size={17}/> Activar notificaciones</button>}<button className="notification-modal-later" onClick={closeWelcomePrompt}>Ahora no, gracias</button><small>Solo te avisaremos de novedades del catálogo.</small></section></div>}
     <div className="announcement"><Sparkles size={14}/> Belleza que te inspira, novedades que te encantan</div>
     <header className="topbar">
       <a className="brand" href="#inicio" aria-label="Babi and Glow inicio"><img className="brand-logo" src="/logo-babi-glow.jpg" alt="Logo Babi&Glow"/><span className="brand-copy"><strong>BABI&GLOW</strong><small>BEAUTY · CARE · GLOW</small></span></a>
