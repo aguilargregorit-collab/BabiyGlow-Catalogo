@@ -35,12 +35,13 @@ El esquema de demo del inventario original permite lectura pública. Para un cat
 
 
 ## Avisos de instalación y notificaciones
-- El catálogo usa nuevas claves de primera visita (v3) para que las pruebas previas no oculten los avisos guardados por versiones anteriores.
-- El aviso de instalación se muestra como ventana propia tras una breve espera; si el navegador no ofrece instalación directa, da instrucciones para añadir la web a la pantalla de inicio.
-- Para probar la primera visita, despliega esta versión y recarga el sitio. Si el navegador conserva una versión antigua, borra los datos del sitio o abre una ventana privada.
+- La instalación ya no depende de una ventana automática: pulsa el botón con el icono de la app y la flecha de descarga que aparece junto a “Stock en vivo” y la campanita.
+- La ventana explica las ventajas de instalar Babi&Glow y permite abrir el diálogo de instalación nativo cuando el navegador lo admite. Si no, muestra instrucciones para añadir la web a la pantalla de inicio.
+- Para probarlo, despliega esta versión y recarga el sitio. Si el navegador conserva una versión antigua, actualiza la página o borra los datos/caché de ese sitio.
 
 
 ## Corrección de ventanas emergentes para Android
 - Los productos nuevos generan un popup visual dentro del catálogo, sin depender de los permisos de notificación del sistema.
 - Las notificaciones de Android se solicitan mediante el service worker porque el constructor `new Notification()` no está disponible en la mayoría de navegadores móviles.
+- La ventana de instalación se abre al pulsar el botón manual de la cabecera y muestra las ventajas de usar Babi&Glow como aplicación.
 - Las ventanas modales limitan su altura al área visible del dispositivo y permiten desplazamiento en pantallas pequeñas.
