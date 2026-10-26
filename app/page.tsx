@@ -1,7 +1,7 @@
 'use client';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { Bell, BellRing, Search, Sparkles, PackageOpen, Radio, CircleCheck, X, RefreshCw, MessageCircle, Instagram } from 'lucide-react';
+import { Bell, BellRing, Search, Sparkles, PackageOpen, Radio, CircleCheck, X, RefreshCw, MessageCircle, Instagram, Download, Check } from 'lucide-react';
 
 type Product = { id: string; name: string; description: string | null; quantity: number; price: number; entry_date: string; image_url: string | null; created_at?: string };
 type Notice = { id: string; title: string; body: string; time: string };
@@ -43,7 +43,6 @@ export default function CatalogPage() {
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [permission, setPermission] = useState<NotificationPermission | 'unsupported'>('default');
   const [showNotices, setShowNotices] = useState(false);
-  const [showWelcomePrompt, setShowWelcomePrompt] = useState(false);
   const [showPwaPrompt, setShowPwaPrompt] = useState(false);
   const [deferredInstallPrompt, setDeferredInstallPrompt] = useState<any>(null);
   const [showInstallHelp, setShowInstallHelp] = useState(false);
@@ -85,58 +84,30 @@ export default function CatalogPage() {
   }, []);
 
   useEffect(() => {
-    let installFallbackTimer: ReturnType<typeof setTimeout> | undefined;
-    let installedHandler: (() => void) | undefined;
-    const isInstalled = () => window.matchMedia('(display-mode: standalone)').matches ||
-      window.matchMedia('(display-mode: fullscreen)').matches ||
-      (navigator as Navigator & { standalone?: boolean }).standalone === true;
-
-    const showNextPrompt = () => {
-      if (isInstalled()) {
-        setShowPwaPrompt(false);
-        if (!('Notification' in window) || Notification.permission !== 'granted') setShowWelcomePrompt(true);
-        return;
-      }
-      setShowWelcomePrompt(false);
-      setShowPwaPrompt(true);
-    };
-
     const handleInstallAvailable = (event: Event) => {
+      // Guardar el evento para abrir el diálogo nativo solo después de que el
+      // usuario pulse el botón de instalación en la cabecera.
       event.preventDefault();
-      const installEvent = event as Event & { prompt?: () => Promise<void>; userChoice?: Promise<{ outcome: string }> };
-      setDeferredInstallPrompt(installEvent);
-      // Si aún no se completó la instalación, el aviso debe aparecer en cada visita.
-      if (!isInstalled()) {
-        setShowWelcomePrompt(false);
-        setShowPwaPrompt(true);
-      }
+      setDeferredInstallPrompt(event as Event & { prompt?: () => Promise<void>; userChoice?: Promise<{ outcome: string }> });
     };
+    const handleInstalled = () => setDeferredInstallPrompt(null);
 
     if (typeof window !== 'undefined') {
       if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => undefined);
       setPermission('Notification' in window ? Notification.permission : 'unsupported');
       window.addEventListener('beforeinstallprompt', handleInstallAvailable);
-
-      // Prioridad Android: el aviso de instalación aparece primero. En navegadores
-      // que no exponen beforeinstallprompt, se ofrece la guía manual igualmente.
-      installFallbackTimer = setTimeout(showNextPrompt, 650);
-      installedHandler = () => {
-        setShowPwaPrompt(false);
-        setDeferredInstallPrompt(null);
-        if (!('Notification' in window) || Notification.permission !== 'granted') setShowWelcomePrompt(true);
-      };
-      window.addEventListener('appinstalled', installedHandler);
+      window.addEventListener('appinstalled', handleInstalled);
     }
 
     void loadProducts();
     if (!supabase) return () => {
-      if (installFallbackTimer) clearTimeout(installFallbackTimer);
       if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
       if (typeof window !== 'undefined') {
         window.removeEventListener('beforeinstallprompt', handleInstallAvailable);
-        if (installedHandler) window.removeEventListener('appinstalled', installedHandler);
+        window.removeEventListener('appinstalled', handleInstalled);
       }
     };
+
     const channel = supabase.channel('catalog-products-live')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, payload => {
         if (payload.eventType === 'INSERT') {
@@ -152,15 +123,15 @@ export default function CatalogPage() {
         }
       })
       .subscribe(status => setConnected(status === 'SUBSCRIBED'));
+
     return () => {
-      if (installFallbackTimer) clearTimeout(installFallbackTimer);
       if (toastTimerRef.current) {
         clearTimeout(toastTimerRef.current);
         toastTimerRef.current = null;
       }
       if (typeof window !== 'undefined') {
         window.removeEventListener('beforeinstallprompt', handleInstallAvailable);
-        if (installedHandler) window.removeEventListener('appinstalled', installedHandler);
+        window.removeEventListener('appinstalled', handleInstalled);
       }
       void supabase?.removeChannel(channel);
     };
@@ -179,22 +150,15 @@ export default function CatalogPage() {
       return dateB - dateA;
     });
   }, [products, query, sortBy]);
-  const closeWelcomePrompt = () => {
-    // No se guarda un indicador de cierre: si no concedió permiso, se vuelve a ofrecer
-    // en la próxima apertura, tal como pidió la dueña del catálogo.
-    setShowWelcomePrompt(false);
-  };
   const enableNotifications = async () => {
-    if (!('Notification' in window)) { setPermission('unsupported'); closeWelcomePrompt(); return; }
+    if (!('Notification' in window)) { setPermission('unsupported'); return; }
     if (Notification.permission === 'denied') {
       setPermission('denied');
-      closeWelcomePrompt();
       return;
     }
     try {
       const result = await Notification.requestPermission();
       setPermission(result);
-      closeWelcomePrompt();
       if (result === 'granted') {
         void showSystemNotification('Babi & Glow', {
           body: '¡Listo! Las notificaciones están activadas.',
@@ -205,13 +169,12 @@ export default function CatalogPage() {
         });
       }
     } catch {
-      closeWelcomePrompt();
+      setPermission('unsupported');
     }
   };
   const closePwaPrompt = () => {
     setShowPwaPrompt(false);
-    // Cerrar no significa instalar; por eso se vuelve a mostrar en la siguiente visita.
-    if (permission !== 'granted') setShowWelcomePrompt(true);
+    setShowInstallHelp(false);
   };
   const installPwa = async () => {
     if (!deferredInstallPrompt) {
@@ -226,7 +189,7 @@ export default function CatalogPage() {
       setDeferredInstallPrompt(null);
       if (choice?.outcome === 'accepted') {
         setShowPwaPrompt(false);
-        if (permission !== 'granted') setShowWelcomePrompt(true);
+        setShowInstallHelp(false);
       } else {
         setShowInstallHelp(true);
       }
@@ -247,12 +210,11 @@ export default function CatalogPage() {
 
   return <main className="page-shell">
     {toastNotice && <div className="product-toast" role="status" aria-live="polite"><span className="product-toast-icon"><BellRing size={19}/></span><div className="product-toast-copy"><strong>{toastNotice.title}</strong><p>{toastNotice.body}</p><small>Novedad del catálogo · {toastNotice.time}</small></div><button className="product-toast-close" onClick={dismissToast} aria-label="Cerrar aviso"><X size={17}/></button></div>}
-    {showPwaPrompt && <div className="notification-modal-backdrop" role="presentation"><section className="notification-modal" role="dialog" aria-modal="true" aria-labelledby="pwa-modal-title"><button className="notification-modal-close" onClick={closePwaPrompt} aria-label="Cerrar aviso"><X size={18}/></button><div className="notification-modal-icon"><Sparkles size={27}/></div><span className="eyebrow">BABI & GLOW EN TU DISPOSITIVO</span><h2 id="pwa-modal-title">¡Instala nuestra app!</h2><p>Agrega Babi&Glow a tu pantalla de inicio para abrir el catálogo fácilmente y tenerlo siempre a mano.</p><button className="notification-modal-activate" onClick={() => void installPwa()}><Sparkles size={17}/> {deferredInstallPrompt ? 'Instalar aplicación' : 'Cómo instalar la app'}</button>{showInstallHelp && <p className="notification-modal-help">{/iphone|ipad|ipod/i.test(typeof navigator !== 'undefined' ? navigator.userAgent : '') ? 'En Safari, pulsa Compartir y luego “Añadir a pantalla de inicio”.' : 'En el menú del navegador, busca “Instalar aplicación” o “Añadir a pantalla de inicio”. Si no aparece, abre este catálogo en Chrome o en el navegador compatible de tu dispositivo.'}</p>}<button className="notification-modal-later" onClick={closePwaPrompt}>Ahora no, gracias</button><small>Una experiencia práctica, directamente desde tu dispositivo.</small></section></div>}
-    {showWelcomePrompt && !showPwaPrompt && <div className="notification-modal-backdrop" role="presentation"><section className="notification-modal" role="dialog" aria-modal="true" aria-labelledby="notification-modal-title"><button className="notification-modal-close" onClick={closeWelcomePrompt} aria-label="Cerrar aviso"><X size={18}/></button><div className="notification-modal-icon"><BellRing size={27}/></div><span className="eyebrow">NOVEDADES BABI & GLOW</span><h2 id="notification-modal-title">¡No te pierdas ningún producto!</h2><p>Activa las notificaciones para que no te pierdas ningún producto y puedas enterarte de las novedades de Babi&Glow.</p>{permission === 'unsupported' ? <p className="notification-modal-help">Este navegador no permite notificaciones. Puedes seguir explorando el catálogo normalmente.</p> : permission === 'denied' ? <p className="notification-modal-help">Las notificaciones están bloqueadas en tu navegador. Puedes habilitarlas desde los permisos del sitio.</p> : <button className="notification-modal-activate" onClick={() => void enableNotifications()}><Bell size={17}/> Activar notificaciones</button>}<button className="notification-modal-later" onClick={closeWelcomePrompt}>Ahora no, gracias</button><small>Solo te avisaremos de novedades del catálogo.</small></section></div>}
+    {showPwaPrompt && <div className="notification-modal-backdrop" role="presentation" onClick={closePwaPrompt}><section className="notification-modal install-app-modal" role="dialog" aria-modal="true" aria-labelledby="pwa-modal-title" onClick={event => event.stopPropagation()}><button className="notification-modal-close" onClick={closePwaPrompt} aria-label="Cerrar ventana"><X size={18}/></button><div className="install-app-logo"><img src="/icons/icon-192.png" alt="Logo de la aplicación Babi&Glow"/></div><span className="eyebrow">BABI & GLOW EN TU DISPOSITIVO</span><h2 id="pwa-modal-title">Tu belleza, a un toque</h2><p>Instala Babi&Glow y accede a nuestro catálogo desde el icono de tu pantalla de inicio.</p><ul className="install-benefits"><li><span><Check size={15}/></span><div><strong>Acceso directo</strong><small>Abre el catálogo sin tener que buscar el enlace.</small></div></li><li><span><Check size={15}/></span><div><strong>Experiencia como una app</strong><small>Entra desde tu pantalla de inicio, como cualquier aplicación.</small></div></li><li><span><Check size={15}/></span><div><strong>Productos y stock actualizados</strong><small>Consulta las novedades mientras tengas conexión a internet.</small></div></li></ul><button className="notification-modal-activate" onClick={() => void installPwa()}><Download size={17}/> {deferredInstallPrompt ? 'Instalar aplicación' : 'Ver cómo instalarla'}</button>{showInstallHelp && <p className="notification-modal-help">{/iphone|ipad|ipod/i.test(typeof navigator !== 'undefined' ? navigator.userAgent : '') ? 'En Safari, pulsa Compartir y luego “Añadir a pantalla de inicio”.' : /android/i.test(typeof navigator !== 'undefined' ? navigator.userAgent : '') ? 'En Chrome para Android, abre el menú ⋮ y busca “Instalar aplicación” o “Añadir a pantalla de inicio”. Si no aparece, abre el catálogo en Chrome actualizado y comprueba que estés usando la dirección HTTPS.' : 'En el menú del navegador, busca “Instalar aplicación” o “Añadir a pantalla de inicio”. La opción depende del navegador que estés usando.'}</p>}<button className="notification-modal-later" onClick={closePwaPrompt}>Seguir navegando</button><small>Gratis · Instálala cuando quieras</small></section></div>}
     <div className="announcement"><Sparkles size={14}/> Belleza que te inspira, novedades que te encantan</div>
     <header className="topbar">
       <a className="brand" href="#inicio" aria-label="Babi and Glow inicio"><img className="brand-logo" src="/logo-babi-glow.jpg" alt="Logo Babi&Glow"/><span className="brand-copy"><strong>BABI&GLOW</strong><small>Tu arte, tu estilo, tu esencia</small></span></a>
-      <div className="top-actions"><span className={`live-pill ${connected ? 'online' : ''}`}><span className="live-dot"/>{connected ? 'Stock en vivo' : 'Conectando...'}</span><button className="bell-button" onClick={() => setShowNotices(v => !v)} aria-label="Ver notificaciones"><Bell size={19}/>{notices.length > 0 && <span className="notification-count">{notices.length}</span>}</button></div>
+      <div className="top-actions"><span className={`live-pill ${connected ? 'online' : ''}`}><span className="live-dot"/>{connected ? 'Stock en vivo' : 'Conectando...'}</span><button className="app-install-button" onClick={() => { setShowInstallHelp(false); setShowPwaPrompt(true); }} aria-label="Ventajas e instalación de la aplicación" title="Instalar aplicación"><img src="/icons/icon-192.png" alt=""/><span className="app-install-download"><Download size={12} strokeWidth={2.8}/></span></button><button className="bell-button" onClick={() => setShowNotices(v => !v)} aria-label="Ver notificaciones"><Bell size={19}/>{notices.length > 0 && <span className="notification-count">{notices.length}</span>}</button></div>
     </header>
 
     {showNotices && <section className="notice-panel"><div className="notice-head"><div><strong>Notificaciones</strong><small>Novedades del catálogo</small></div><button className="plain-icon" onClick={() => setShowNotices(false)} aria-label="Cerrar"><X size={18}/></button></div>{notices.length ? notices.map(n => <article className="notice-item" key={n.id}><span className="notice-icon"><BellRing size={17}/></span><div><strong>{n.title}</strong><p>{n.body}</p><small>{n.time}</small></div><button className="plain-icon" onClick={() => dismissNotice(n.id)} aria-label="Descartar"><X size={15}/></button></article>) : <p className="notice-empty">Todavía no hay novedades. Te avisaremos cuando se agreguen productos.</p>}{permission !== 'granted' && <button className="enable-notices" onClick={enableNotifications}><Bell size={16}/> Activar notificaciones del navegador</button>}{permission === 'denied' && <small className="permission-help">Las notificaciones están bloqueadas en tu navegador. Puedes habilitarlas desde los permisos del sitio.</small>}</section>}

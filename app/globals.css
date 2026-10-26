@@ -204,3 +204,19 @@ body,.page-shell{background:#fff8ef;color:#493542}
 @supports (height: 100dvh){.notification-modal{max-height:calc(100vh - 24px)}}
 @media(max-width:480px){.product-toast{top:max(8px,env(safe-area-inset-top));right:8px;width:calc(100vw - 16px);padding:12px 10px;gap:9px}.product-toast-icon{width:34px;height:34px;flex-basis:34px}.product-toast-copy strong{font-size:12px}.product-toast-copy p{font-size:11px}.product-toast-copy small{font-size:9px}.notification-modal{max-height:calc(100vh - 24px)}}
 @media(prefers-reduced-motion:reduce){.product-toast{animation:none}}
+
+/* Botón manual de instalación de la app en la cabecera */
+.app-install-button{position:relative;display:grid;place-items:center;flex:0 0 auto;width:40px;height:40px;padding:4px;border:1px solid #edc9da;border-radius:11px;background:#fff;color:var(--wine);cursor:pointer;box-shadow:0 2px 8px #9e397110;transition:transform .18s ease,background .18s ease,border-color .18s ease}
+.app-install-button:hover{background:#fff0f7;border-color:#d85b9c;transform:translateY(-1px)}
+.app-install-button>img{display:block;width:28px;height:28px;object-fit:cover;border-radius:7px}
+.app-install-download{position:absolute;right:-4px;bottom:-4px;display:grid;place-items:center;width:19px;height:19px;border:2px solid #fffdf9;border-radius:50%;background:#c94f91;color:#fff}
+.install-app-logo{width:76px;height:76px;margin:0 auto 16px;padding:5px;border:1px solid #f0d7e3;border-radius:20px;background:#fff;box-shadow:0 8px 22px #b85a8719}
+.install-app-logo img{display:block;width:100%;height:100%;object-fit:cover;border-radius:15px}
+.install-app-modal>p{margin-bottom:16px}
+.install-benefits{display:grid;gap:12px;margin:0 auto 21px;padding:0;max-width:340px;text-align:left;list-style:none}
+.install-benefits li{display:flex;align-items:flex-start;gap:10px}
+.install-benefits li>span{display:grid;place-items:center;flex:0 0 25px;width:25px;height:25px;border-radius:50%;background:#f8e5ef;color:#ad397c}
+.install-benefits li div{display:grid;gap:3px;padding-top:1px}
+.install-benefits strong{color:#74415b;font-size:12px}
+.install-benefits small{color:#927b88;font-size:11px;line-height:1.5}
+@media(max-width:700px){.top-actions{gap:7px}.app-install-button,.bell-button{width:36px;height:36px;border-radius:9px}.app-install-button>img{width:25px;height:25px}.live-pill{padding:8px}.app-install-download{width:17px;height:17px}}
