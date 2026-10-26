@@ -6,7 +6,7 @@ Segunda aplicación Next.js que lee la tabla `public.products` de la app de inve
 - Catálogo público de productos, fotografía, precio, cantidad disponible y descripción.
 - Búsqueda por nombre o características.
 - Suscripción Supabase Realtime para INSERT, UPDATE y DELETE en `public.products`.
-- Al detectar un producto nuevo muestra una notificación dentro de la página y, si la persona concedió permiso al navegador, una notificación del navegador.
+- Al detectar un producto nuevo muestra un aviso emergente dentro de la página (también en Android) y, si la persona concedió permiso, intenta mostrar una notificación del sistema mediante el service worker.
 - Diseño responsive con identidad visual Babi&Glow: rosa, fucsia y crema, usando el mismo logo oficial en el encabezado, el pie y los iconos de la PWA.
 - Configuración PWA para instalar como aplicación independiente desde Chrome Android: manifiesto, iconos y service worker.
 
@@ -23,9 +23,9 @@ Segunda aplicación Next.js que lee la tabla `public.products` de la app de inve
 También puedes usar `cp .env.example .env.local` para desarrollo local. No subas `.env.local` a GitHub.
 
 ## Importante sobre notificaciones
-- La sincronización de productos funciona en vivo mientras el catálogo está abierto y conectado a Internet.
+- La sincronización de productos y los avisos emergentes internos funcionan mientras el catálogo está abierto y conectado a Internet. En Android, las notificaciones del sistema se emiten con `ServiceWorkerRegistration.showNotification()` y necesitan permiso concedido.
 - Las notificaciones del navegador requieren que cada visitante pulse “Activar notificaciones” y permita los permisos. Los navegadores pueden restringir notificaciones según sus ajustes.
-- Esta versión NO envía notificaciones push si la página está cerrada o el navegador está detenido. El service worker incluido sirve para la instalación y caché limitada de recursos estáticos, no para enviar notificaciones por sí solo. Para notificaciones en segundo plano hace falta implementar Web Push con claves VAPID, suscripciones guardadas y un servidor/función que envíe las notificaciones.
+- Esta versión NO envía notificaciones push cuando la página está cerrada o el navegador está detenido. Para notificaciones automáticas en segundo plano hacen falta Web Push, claves VAPID, suscripciones guardadas y un servidor/función que envíe las notificaciones.
 
 ## Estructura de datos esperada
 Usa la misma tabla que el inventario original: `products` con columnas `id`, `name`, `description`, `quantity`, `price`, `entry_date`, `image_url`, `created_at`.
@@ -38,3 +38,9 @@ El esquema de demo del inventario original permite lectura pública. Para un cat
 - El catálogo usa nuevas claves de primera visita (v3) para que las pruebas previas no oculten los avisos guardados por versiones anteriores.
 - El aviso de instalación se muestra como ventana propia tras una breve espera; si el navegador no ofrece instalación directa, da instrucciones para añadir la web a la pantalla de inicio.
 - Para probar la primera visita, despliega esta versión y recarga el sitio. Si el navegador conserva una versión antigua, borra los datos del sitio o abre una ventana privada.
+
+
+## Corrección de ventanas emergentes para Android
+- Los productos nuevos generan un popup visual dentro del catálogo, sin depender de los permisos de notificación del sistema.
+- Las notificaciones de Android se solicitan mediante el service worker porque el constructor `new Notification()` no está disponible en la mayoría de navegadores móviles.
+- Las ventanas modales limitan su altura al área visible del dispositivo y permiten desplazamiento en pantallas pequeñas.
