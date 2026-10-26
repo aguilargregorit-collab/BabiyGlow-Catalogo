@@ -32,3 +32,9 @@ Usa la misma tabla que el inventario original: `products` con columnas `id`, `na
 
 ## Comprobación de seguridad
 El esquema de demo del inventario original permite lectura pública. Para un catálogo público, la lectura de productos puede ser pública, pero las operaciones de escritura deben quedar limitadas al inventario autenticado. Revisa las políticas RLS antes de usar con datos reales.
+
+
+## Avisos de instalación y notificaciones
+- El catálogo usa nuevas claves de primera visita (v3) para que las pruebas previas no oculten los avisos guardados por versiones anteriores.
+- El aviso de instalación se muestra como ventana propia tras una breve espera; si el navegador no ofrece instalación directa, da instrucciones para añadir la web a la pantalla de inicio.
+- Para probar la primera visita, despliega esta versión y recarga el sitio. Si el navegador conserva una versión antigua, borra los datos del sitio o abre una ventana privada.

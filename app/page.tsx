@@ -45,7 +45,7 @@ export default function CatalogPage() {
       const installEvent = event as Event & { prompt?: () => Promise<void>; userChoice?: Promise<{ outcome: string }> };
       setDeferredInstallPrompt(installEvent);
       try {
-        if (!window.localStorage.getItem('babiglow-pwa-prompt-seen-v2') && !window.matchMedia('(display-mode: standalone)').matches) {
+        if (!window.localStorage.getItem('babiglow-pwa-prompt-seen-v3') && !window.matchMedia('(display-mode: standalone)').matches) {
           setShowWelcomePrompt(false);
           setShowPwaPrompt(true);
         }
@@ -59,19 +59,19 @@ export default function CatalogPage() {
       let pwaPromptSeen = false;
       let notificationPromptSeen = false;
       try {
-        pwaPromptSeen = !!window.localStorage.getItem('babiglow-pwa-prompt-seen-v2');
-        notificationPromptSeen = !!window.localStorage.getItem('babiglow-notification-prompt-seen-v2');
+        pwaPromptSeen = !!window.localStorage.getItem('babiglow-pwa-prompt-seen-v3');
+        notificationPromptSeen = !!window.localStorage.getItem('babiglow-notification-prompt-seen-v3');
       } catch { /* Si el almacenamiento está bloqueado, seguimos mostrando los avisos. */ }
       if (!pwaPromptSeen && !isStandalone) {
         // Algunos navegadores disparan beforeinstallprompt después de cargar la página;
         // si no lo hacen, mostramos igualmente instrucciones de instalación manual.
         installFallbackTimer = setTimeout(() => {
           try {
-            if (!window.localStorage.getItem('babiglow-pwa-prompt-seen-v2') && !window.matchMedia('(display-mode: standalone)').matches) {
+            if (!window.localStorage.getItem('babiglow-pwa-prompt-seen-v3') && !window.matchMedia('(display-mode: standalone)').matches) {
               setShowPwaPrompt(true);
             }
           } catch { setShowPwaPrompt(true); }
-        }, 1200);
+        }, 500);
       } else if (currentPermission !== 'granted' && !notificationPromptSeen) {
         setShowWelcomePrompt(true);
       }
@@ -79,9 +79,9 @@ export default function CatalogPage() {
       installedHandler = () => {
         setShowPwaPrompt(false);
         setDeferredInstallPrompt(null);
-        try { window.localStorage.setItem('babiglow-pwa-prompt-seen-v2', '1'); } catch {}
+        try { window.localStorage.setItem('babiglow-pwa-prompt-seen-v3', '1'); } catch {}
         if (currentPermission !== 'granted') {
-          try { if (!window.localStorage.getItem('babiglow-notification-prompt-seen-v2')) setShowWelcomePrompt(true); } catch { setShowWelcomePrompt(true); }
+          try { if (!window.localStorage.getItem('babiglow-notification-prompt-seen-v3')) setShowWelcomePrompt(true); } catch { setShowWelcomePrompt(true); }
         }
       };
       window.addEventListener('appinstalled', installedHandler);
@@ -136,7 +136,7 @@ export default function CatalogPage() {
   }, [products, query, sortBy]);
   const closeWelcomePrompt = () => {
     setShowWelcomePrompt(false);
-    try { window.localStorage.setItem('babiglow-notification-prompt-seen-v2', '1'); } catch {}
+    try { window.localStorage.setItem('babiglow-notification-prompt-seen-v3', '1'); } catch {}
   };
   const enableNotifications = async () => {
     if (!('Notification' in window)) { setPermission('unsupported'); closeWelcomePrompt(); return; }
@@ -148,8 +148,8 @@ export default function CatalogPage() {
   };
   const closePwaPrompt = () => {
     setShowPwaPrompt(false);
-    try { window.localStorage.setItem('babiglow-pwa-prompt-seen-v2', '1'); } catch {}
-    try { if (permission !== 'granted' && !window.localStorage.getItem('babiglow-notification-prompt-seen-v2')) setShowWelcomePrompt(true); } catch { if (permission !== 'granted') setShowWelcomePrompt(true); }
+    try { window.localStorage.setItem('babiglow-pwa-prompt-seen-v3', '1'); } catch {}
+    try { if (permission !== 'granted' && !window.localStorage.getItem('babiglow-notification-prompt-seen-v3')) setShowWelcomePrompt(true); } catch { if (permission !== 'granted') setShowWelcomePrompt(true); }
   };
   const installPwa = async () => {
     if (!deferredInstallPrompt) {
@@ -164,8 +164,8 @@ export default function CatalogPage() {
       setDeferredInstallPrompt(null);
       if (choice?.outcome === 'accepted') {
         setShowPwaPrompt(false);
-        try { window.localStorage.setItem('babiglow-pwa-prompt-seen-v2', '1'); } catch {}
-        try { if (permission !== 'granted' && !window.localStorage.getItem('babiglow-notification-prompt-seen-v2')) setShowWelcomePrompt(true); } catch {}
+        try { window.localStorage.setItem('babiglow-pwa-prompt-seen-v3', '1'); } catch {}
+        try { if (permission !== 'granted' && !window.localStorage.getItem('babiglow-notification-prompt-seen-v3')) setShowWelcomePrompt(true); } catch {}
       } else closePwaPrompt();
     } catch { setShowInstallHelp(true); }
   };
