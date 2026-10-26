@@ -1,4 +1,4 @@
-const CACHE_NAME = 'babiglow-catalog-shell-v2';
+const CACHE_NAME = 'babiglow-catalog-shell-v4';
 const SHELL = ['/manifest.json', '/icons/icon-192.png', '/icons/icon-512.png', '/logo-babi-glow.jpg'];
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(SHELL)).then(() => self.skipWaiting()));

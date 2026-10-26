@@ -40,54 +40,47 @@ export default function CatalogPage() {
   useEffect(() => {
     let installFallbackTimer: ReturnType<typeof setTimeout> | undefined;
     let installedHandler: (() => void) | undefined;
+    const isInstalled = () => window.matchMedia('(display-mode: standalone)').matches ||
+      window.matchMedia('(display-mode: fullscreen)').matches ||
+      (navigator as Navigator & { standalone?: boolean }).standalone === true;
+
+    const showNextPrompt = () => {
+      if (isInstalled()) {
+        setShowPwaPrompt(false);
+        if (!('Notification' in window) || Notification.permission !== 'granted') setShowWelcomePrompt(true);
+        return;
+      }
+      setShowWelcomePrompt(false);
+      setShowPwaPrompt(true);
+    };
+
     const handleInstallAvailable = (event: Event) => {
       event.preventDefault();
       const installEvent = event as Event & { prompt?: () => Promise<void>; userChoice?: Promise<{ outcome: string }> };
       setDeferredInstallPrompt(installEvent);
-      try {
-        if (!window.localStorage.getItem('babiglow-pwa-prompt-seen-v3') && !window.matchMedia('(display-mode: standalone)').matches) {
-          setShowWelcomePrompt(false);
-          setShowPwaPrompt(true);
-        }
-      } catch { setShowPwaPrompt(true); setShowWelcomePrompt(false); }
+      // Si aún no se completó la instalación, el aviso debe aparecer en cada visita.
+      if (!isInstalled()) {
+        setShowWelcomePrompt(false);
+        setShowPwaPrompt(true);
+      }
     };
+
     if (typeof window !== 'undefined') {
       if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => undefined);
-      const currentPermission = 'Notification' in window ? Notification.permission : 'unsupported';
-      setPermission(currentPermission);
-      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as Navigator & { standalone?: boolean }).standalone === true;
-      let pwaPromptSeen = false;
-      let notificationPromptSeen = false;
-      try {
-        pwaPromptSeen = !!window.localStorage.getItem('babiglow-pwa-prompt-seen-v3');
-        notificationPromptSeen = !!window.localStorage.getItem('babiglow-notification-prompt-seen-v3');
-      } catch { /* Si el almacenamiento está bloqueado, seguimos mostrando los avisos. */ }
-      if (!pwaPromptSeen && !isStandalone) {
-        // Algunos navegadores disparan beforeinstallprompt después de cargar la página;
-        // si no lo hacen, mostramos igualmente instrucciones de instalación manual.
-        installFallbackTimer = setTimeout(() => {
-          try {
-            if (!window.localStorage.getItem('babiglow-pwa-prompt-seen-v3') && !window.matchMedia('(display-mode: standalone)').matches) {
-              setShowPwaPrompt(true);
-            }
-          } catch { setShowPwaPrompt(true); }
-        }, 500);
-      } else if (currentPermission !== 'granted' && !notificationPromptSeen) {
-        setShowWelcomePrompt(true);
-      }
+      setPermission('Notification' in window ? Notification.permission : 'unsupported');
       window.addEventListener('beforeinstallprompt', handleInstallAvailable);
+
+      // Prioridad Android: el aviso de instalación aparece primero. En navegadores
+      // que no exponen beforeinstallprompt, se ofrece la guía manual igualmente.
+      installFallbackTimer = setTimeout(showNextPrompt, 650);
       installedHandler = () => {
         setShowPwaPrompt(false);
         setDeferredInstallPrompt(null);
-        try { window.localStorage.setItem('babiglow-pwa-prompt-seen-v3', '1'); } catch {}
-        if (currentPermission !== 'granted') {
-          try { if (!window.localStorage.getItem('babiglow-notification-prompt-seen-v3')) setShowWelcomePrompt(true); } catch { setShowWelcomePrompt(true); }
-        }
+        if (!('Notification' in window) || Notification.permission !== 'granted') setShowWelcomePrompt(true);
       };
       window.addEventListener('appinstalled', installedHandler);
     }
 
-    // Cargar productos y suscribirse a Supabase fuera del bloque de eventos del navegador.
     void loadProducts();
     if (!supabase) return () => {
       if (installFallbackTimer) clearTimeout(installFallbackTimer);
@@ -135,26 +128,37 @@ export default function CatalogPage() {
     });
   }, [products, query, sortBy]);
   const closeWelcomePrompt = () => {
+    // No se guarda un indicador de cierre: si no concedió permiso, se vuelve a ofrecer
+    // en la próxima apertura, tal como pidió la dueña del catálogo.
     setShowWelcomePrompt(false);
-    try { window.localStorage.setItem('babiglow-notification-prompt-seen-v3', '1'); } catch {}
   };
   const enableNotifications = async () => {
     if (!('Notification' in window)) { setPermission('unsupported'); closeWelcomePrompt(); return; }
-    const result = await Notification.requestPermission(); setPermission(result);
-    closeWelcomePrompt();
-    if (result === 'granted') {
-      try { new Notification('Babi & Glow', { body: '¡Listo! Te avisaremos cuando se agreguen productos mientras tengas abierto el catálogo.', icon: '/icons/icon-192.png' }); } catch {}
+    if (Notification.permission === 'denied') {
+      setPermission('denied');
+      closeWelcomePrompt();
+      return;
+    }
+    try {
+      const result = await Notification.requestPermission();
+      setPermission(result);
+      closeWelcomePrompt();
+      if (result === 'granted') {
+        try { new Notification('Babi & Glow', { body: '¡Listo! Las notificaciones están activadas.', icon: '/icons/icon-192.png' }); } catch {}
+      }
+    } catch {
+      closeWelcomePrompt();
     }
   };
   const closePwaPrompt = () => {
     setShowPwaPrompt(false);
-    try { window.localStorage.setItem('babiglow-pwa-prompt-seen-v3', '1'); } catch {}
-    try { if (permission !== 'granted' && !window.localStorage.getItem('babiglow-notification-prompt-seen-v3')) setShowWelcomePrompt(true); } catch { if (permission !== 'granted') setShowWelcomePrompt(true); }
+    // Cerrar no significa instalar; por eso se vuelve a mostrar en la siguiente visita.
+    if (permission !== 'granted') setShowWelcomePrompt(true);
   };
   const installPwa = async () => {
     if (!deferredInstallPrompt) {
-      // iOS/Safari y algunos navegadores no ofrecen el evento de instalación;
-      // mostrar instrucciones reales en lugar de cerrar el aviso sin explicar.
+      // Muchos navegadores no permiten abrir el diálogo de instalación sin un evento
+      // propio; mostrar pasos manuales es el comportamiento compatible.
       setShowInstallHelp(true);
       return;
     }
@@ -164,9 +168,10 @@ export default function CatalogPage() {
       setDeferredInstallPrompt(null);
       if (choice?.outcome === 'accepted') {
         setShowPwaPrompt(false);
-        try { window.localStorage.setItem('babiglow-pwa-prompt-seen-v3', '1'); } catch {}
-        try { if (permission !== 'granted' && !window.localStorage.getItem('babiglow-notification-prompt-seen-v3')) setShowWelcomePrompt(true); } catch {}
-      } else closePwaPrompt();
+        if (permission !== 'granted') setShowWelcomePrompt(true);
+      } else {
+        setShowInstallHelp(true);
+      }
     } catch { setShowInstallHelp(true); }
   };
   const dismissNotice = (id: string) => setNotices(prev => prev.filter(n => n.id !== id));
