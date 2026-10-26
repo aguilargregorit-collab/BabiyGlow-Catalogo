@@ -36,7 +36,7 @@ El esquema de demo del inventario original permite lectura pública. Para un cat
 
 ## Avisos de instalación y notificaciones
 - La instalación ya no depende de una ventana automática: pulsa el botón con el icono de la app y la flecha de descarga que aparece junto a “Stock en vivo” y la campanita.
-- La ventana explica las ventajas de instalar Babi&Glow y permite abrir el diálogo de instalación nativo cuando el navegador lo admite. Si no, muestra instrucciones para añadir la web a la pantalla de inicio.
+- Al pulsar el botón, se abre una ventana titulada “Instalar Aplicación” con las ventajas de usar Babi&Glow. Permite abrir el diálogo de instalación nativo cuando el navegador lo admite; si no, muestra instrucciones para añadir la web a la pantalla de inicio.
 - Para probarlo, despliega esta versión y recarga el sitio. Si el navegador conserva una versión antigua, actualiza la página o borra los datos/caché de ese sitio.
 
 
