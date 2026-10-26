@@ -208,7 +208,7 @@ body,.page-shell{background:#fff8ef;color:#493542}
 /* Botón manual de instalación de la app en la cabecera */
 .app-install-button{position:relative;display:grid;place-items:center;flex:0 0 auto;width:40px;height:40px;padding:4px;border:1px solid #edc9da;border-radius:11px;background:#fff;color:var(--wine);cursor:pointer;box-shadow:0 2px 8px #9e397110;transition:transform .18s ease,background .18s ease,border-color .18s ease}
 .app-install-button:hover{background:#fff0f7;border-color:#d85b9c;transform:translateY(-1px)}
-.app-install-button>img{display:block;width:28px;height:28px;object-fit:cover;border-radius:7px}
+.app-install-button>img{display:block;width:28px;height:28px;object-fit:cover;object-position:center;border-radius:7px}
 .app-install-download{position:absolute;right:-4px;bottom:-4px;display:grid;place-items:center;width:19px;height:19px;border:2px solid #fffdf9;border-radius:50%;background:#c94f91;color:#fff}
 .install-app-logo{width:76px;height:76px;margin:0 auto 16px;padding:5px;border:1px solid #f0d7e3;border-radius:20px;background:#fff;box-shadow:0 8px 22px #b85a8719}
 .install-app-logo img{display:block;width:100%;height:100%;object-fit:cover;border-radius:15px}
@@ -219,4 +219,5 @@ body,.page-shell{background:#fff8ef;color:#493542}
 .install-benefits li div{display:grid;gap:3px;padding-top:1px}
 .install-benefits strong{color:#74415b;font-size:12px}
 .install-benefits small{color:#927b88;font-size:11px;line-height:1.5}
-@media(max-width:700px){.top-actions{gap:7px}.app-install-button,.bell-button{width:36px;height:36px;border-radius:9px}.app-install-button>img{width:25px;height:25px}.live-pill{padding:8px}.app-install-download{width:17px;height:17px}}
+@media(max-width:700px){.top-actions{gap:7px}.app-install-button,.bell-button{width:36px;height:36px;border-radius:9px}.app-install-button>img{width:25px;height:25px}.live-pill{font-size:9px;padding:6px 7px;gap:5px;white-space:nowrap}.app-install-download{width:17px;height:17px}}
+@media(max-width:380px){.topbar{padding-left:10px;padding-right:10px}.brand{gap:6px}.brand-logo{width:36px;height:36px}.brand-copy small{display:none}.top-actions{gap:5px}.live-pill{font-size:8px;padding:5px 6px;gap:4px}.live-pill .live-dot{width:6px;height:6px}.app-install-button,.bell-button{width:33px;height:33px}}
