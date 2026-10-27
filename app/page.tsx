@@ -5,6 +5,20 @@ import { Bell, BellRing, Search, Sparkles, PackageOpen, Radio, CircleCheck, X, R
 
 type Product = { id: string; name: string; description: string | null; quantity: number; price: number; entry_date: string; image_url: string | null; created_at?: string };
 type Notice = { id: string; title: string; body: string; time: string };
+type CatalogTerms = { id: number; title: string; content: string; updated_at?: string };
+
+const DEFAULT_TERMS: CatalogTerms = {
+  id: 1,
+  title: 'Términos y condiciones',
+  content: [
+    '1. Disponibilidad de productos\nLa disponibilidad que aparece en el catálogo refleja la información recibida del inventario y puede cambiar. Confirma la existencia del producto antes de realizar el pago.',
+    '2. Precios\nLos precios se muestran en dólares estadounidenses (USD), salvo que se indique lo contrario. El precio final debe confirmarse al momento de gestionar el pedido.',
+    '3. Pedidos y confirmación\nEnviar una consulta o mensaje no reserva automáticamente un producto. Babi&Glow confirmará contigo la disponibilidad y los detalles del pedido.',
+    '4. Descripción e imágenes\nLas imágenes y descripciones sirven como referencia. Puede haber pequeñas variaciones de presentación o empaque respecto a las fotografías.',
+    '5. Actualizaciones\nEl catálogo, los precios, la disponibilidad y estas condiciones pueden actualizarse. La versión publicada en esta página es la que se encuentra vigente.'
+  ].join('\n\n')
+};
+
 const money = (v: number) => new Intl.NumberFormat('es-VE', { style: 'currency', currency: 'USD' }).format(Number(v || 0));
 
 /**
@@ -47,6 +61,25 @@ export default function CatalogPage() {
   const [deferredInstallPrompt, setDeferredInstallPrompt] = useState<any>(null);
   const [showInstallHelp, setShowInstallHelp] = useState(false);
   const [connected, setConnected] = useState(false);
+  const [terms, setTerms] = useState<CatalogTerms>(DEFAULT_TERMS);
+  const [termsConnected, setTermsConnected] = useState(false);
+
+  const loadTerms = useCallback(async () => {
+    if (!supabase) return;
+    const { data, error: termsError } = await supabase
+      .from('catalog_terms')
+      .select('id,title,content,updated_at')
+      .eq('id', 1)
+      .maybeSingle();
+
+    if (termsError) {
+      // El catálogo sigue funcionando con condiciones predeterminadas hasta que
+      // se ejecute supabase/terms-and-conditions.sql en el proyecto Supabase.
+      console.warn('No se pudieron cargar los términos desde Supabase:', termsError.message);
+      return;
+    }
+    if (data) setTerms(data as CatalogTerms);
+  }, []);
 
   const loadProducts = useCallback(async () => {
     if (!supabase) { setError('Faltan las variables de Supabase. Configura la URL y la clave publicable en Vercel.'); setLoading(false); return; }
@@ -100,6 +133,7 @@ export default function CatalogPage() {
     }
 
     void loadProducts();
+    void loadTerms();
     if (!supabase) return () => {
       if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
       if (typeof window !== 'undefined') {
@@ -124,6 +158,18 @@ export default function CatalogPage() {
       })
       .subscribe(status => setConnected(status === 'SUBSCRIBED'));
 
+    // Canal separado: los cambios en las condiciones se reflejan sin recargar
+    // la página y no afectan el canal de actualización de productos.
+    const termsChannel = supabase.channel('catalog-terms-live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'catalog_terms', filter: 'id=eq.1' }, payload => {
+        if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+          setTerms(payload.new as CatalogTerms);
+        } else if (payload.eventType === 'DELETE') {
+          setTerms(DEFAULT_TERMS);
+        }
+      })
+      .subscribe(status => setTermsConnected(status === 'SUBSCRIBED'));
+
     return () => {
       if (toastTimerRef.current) {
         clearTimeout(toastTimerRef.current);
@@ -134,8 +180,9 @@ export default function CatalogPage() {
         window.removeEventListener('appinstalled', handleInstalled);
       }
       void supabase?.removeChannel(channel);
+      void supabase?.removeChannel(termsChannel);
     };
-  }, [loadProducts, addNotice]);
+  }, [loadProducts, loadTerms, addNotice]);
 
   const filtered = useMemo(() => {
     const matching = products.filter(p => `${p.name} ${p.description || ''}`.toLowerCase().includes(query.trim().toLowerCase()));
@@ -219,7 +266,20 @@ export default function CatalogPage() {
 
     {showNotices && <section className="notice-panel"><div className="notice-head"><div><strong>Notificaciones</strong><small>Novedades del catálogo</small></div><button className="plain-icon" onClick={() => setShowNotices(false)} aria-label="Cerrar"><X size={18}/></button></div>{notices.length ? notices.map(n => <article className="notice-item" key={n.id}><span className="notice-icon"><BellRing size={17}/></span><div><strong>{n.title}</strong><p>{n.body}</p><small>{n.time}</small></div><button className="plain-icon" onClick={() => dismissNotice(n.id)} aria-label="Descartar"><X size={15}/></button></article>) : <p className="notice-empty">Todavía no hay novedades. Te avisaremos cuando se agreguen productos.</p>}{permission !== 'granted' && <button className="enable-notices" onClick={enableNotifications}><Bell size={16}/> Activar notificaciones del navegador</button>}{permission === 'denied' && <small className="permission-help">Las notificaciones están bloqueadas en tu navegador. Puedes habilitarlas desde los permisos del sitio.</small>}</section>}
 
-    <section className="hero" id="inicio"><div className="hero-content"><span className="eyebrow"><span/> EL UNIVERSO BABI & GLOW</span><h1>Tu próximo favorito<br/>está <em>por descubrir.</em></h1><p>Explora nuestra selección de belleza y cuidado personal. Mira precios, detalles y disponibilidad actualizados desde nuestro inventario.</p><a className="hero-link" href="#catalogo">Explorar productos <span>↓</span></a></div><div className="hero-art"><div className="hero-orbit orbit-one"/><div className="hero-orbit orbit-two"/><div className="hero-glow"><img src="/logo-babi-glow.jpg" alt="Babi&Glow"/></div><div className="floating-tag tag-top">Tu ritual diario ✦</div><div className="floating-tag tag-bottom">Tu arte, tu estilo, tu esencia</div></div><div className="hero-caption">BELLEZA EN CADA DETALLE <span>✦</span></div></section>
+    <section className="hero" id="inicio">
+      <div className="hero-art" aria-label="Logo Babi&Glow">
+        <div className="hero-orbit orbit-one"/><div className="hero-orbit orbit-two"/>
+        <div className="hero-glow"><img src="/logo-babi-glow.jpg" alt="Logo Babi&Glow"/></div>
+        <div className="floating-tag tag-top">Tu ritual diario ✦</div>
+        <div className="floating-tag tag-bottom">Tu arte, tu estilo, tu esencia</div>
+      </div>
+      <div className="hero-content">
+        <span className="eyebrow"><span/> EL UNIVERSO BABI & GLOW</span>
+        <h1>Tu próximo favorito<br/>está <em>por descubrir.</em></h1>
+        <p>Explora nuestra selección de belleza y cuidado personal. Mira precios, detalles y disponibilidad actualizados desde nuestro inventario.</p>
+      </div>
+      <div className="hero-caption">BELLEZA EN CADA DETALLE <span>✦</span></div>
+    </section>
 
     <section className="catalog-section" id="catalogo"><div className="section-heading"><div><span className="eyebrow">NUESTRA SELECCIÓN</span><h2>Encuentra tu <em>glow.</em></h2><p>Productos seleccionados para realzar tu esencia.</p></div><div className="catalog-meta"><span className="stock-indicator"><span className="live-dot"/> Actualización en tiempo real</span><strong>{products.length} <small>{products.length === 1 ? 'producto' : 'productos'}</small></strong></div></div>
       <div className="catalog-tools"><label className="search-box"><Search size={18}/><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Buscar por nombre o característica..."/><kbd>⌕</kbd></label><label className="sort-box"><span>Ordenar:</span><select value={sortBy} onChange={e => setSortBy(e.target.value as typeof sortBy)} aria-label="Filtrar productos"><option value="recent">Más recientes</option><option value="name">Nombre (A-Z)</option><option value="price-asc">Precio: menor a mayor</option><option value="price-desc">Precio: mayor a menor</option><option value="stock-desc">Stock: mayor a menor</option><option value="stock-asc">Stock: menor a mayor</option></select></label><button className="refresh-button" onClick={() => { setLoading(true); void loadProducts(); }}><RefreshCw size={16}/> Actualizar</button></div>
@@ -229,6 +289,16 @@ export default function CatalogPage() {
     </section>
     {permission !== 'granted' && <section className="notify-strip"><div className="notify-icon"><BellRing size={22}/></div><div><span className="eyebrow">NOVEDADES DE BABI & GLOW</span><h2>Las novedades, primero.</h2><p>Activa las notificaciones para enterarte cuando lleguen nuevos productos.</p></div><button onClick={enableNotifications}>Avisarme de novedades <span>↗</span></button></section>}
     <section className="contact-strip" id="contacto"><div className="contact-copy"><span className="eyebrow">¿TIENES ALGUNA DUDA?</span><h2>Estamos aquí para ayudarte.</h2><p>Consulta por WhatsApp o síguenos en Instagram para conocer más sobre nuestros productos.</p></div><div className="contact-actions"><a className="contact-button whatsapp-button" href="https://wa.me/584248316536" target="_blank" rel="noopener noreferrer"><MessageCircle size={19}/> Contactar por WhatsApp</a><a className="contact-button instagram-button" href="https://www.instagram.com/babiglow2026?exln=MTlvNmt4bDUwajV6cA==" target="_blank" rel="noopener noreferrer"><Instagram size={19}/> Instagram @babiglow2026</a></div></section>
+    <section className="terms-section" id="terminos-y-condiciones" aria-labelledby="terms-title">
+      <div className="terms-heading">
+        <div><span className="eyebrow">INFORMACIÓN DE LA TIENDA</span><h2 id="terms-title">{terms.title || 'Términos y condiciones'}</h2></div>
+        <span className={`terms-sync-status ${termsConnected ? 'is-live' : ''}`}><span className="live-dot"/>{termsConnected ? 'Sincronizado en tiempo real' : 'Condiciones de Babi&Glow'}</span>
+      </div>
+      <div className="terms-body">
+        {(terms.content || DEFAULT_TERMS.content).split(/\n\s*\n/).filter(Boolean).map((paragraph, index) => <p key={index}>{paragraph}</p>)}
+      </div>
+      <p className="terms-sync-note">Esta información se administra en Supabase y se actualizará aquí automáticamente cuando se modifique desde el sistema de inventario.</p>
+    </section>
     <footer className="footer"><a className="brand footer-brand" href="#inicio"><img className="brand-logo" src="/logo-babi-glow.jpg" alt="Logo Babi&Glow"/><span className="brand-copy"><strong>BABI&GLOW</strong><small>Tu arte, tu estilo, tu esencia</small></span></a><p>Hecho para brillar, todos los días.</p><span>© {new Date().getFullYear()} Babi&Glow</span></footer>
   </main>;
 }

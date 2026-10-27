@@ -221,3 +221,79 @@ body,.page-shell{background:#fff8ef;color:#493542}
 .install-benefits small{color:#927b88;font-size:11px;line-height:1.5}
 @media(max-width:700px){.top-actions{gap:7px}.app-install-button,.bell-button{width:36px;height:36px;border-radius:9px}.app-install-button>img{width:25px;height:25px}.live-pill{font-size:9px;padding:6px 7px;gap:5px;white-space:nowrap}.app-install-download{width:17px;height:17px}}
 @media(max-width:380px){.topbar{padding-left:10px;padding-right:10px}.brand{gap:6px}.brand-logo{width:36px;height:36px}.brand-copy small{display:none}.top-actions{gap:5px}.live-pill{font-size:8px;padding:5px 6px;gap:4px}.live-pill .live-dot{width:6px;height:6px}.app-install-button,.bell-button{width:33px;height:33px}}
+
+/* Fase 2: composición centrada del hero, sección de términos y tipografía más legible. */
+:root{--ink:#3e2835;--muted:#6c5361;--line:#ead0dc}
+body,.page-shell{color:#3e2835;font-weight:500}
+.hero{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:0;min-height:0;padding:24px clamp(20px,6vw,80px) 26px;text-align:center}
+.hero-art{order:0;width:min(100%,520px);height:220px;margin:-4px auto 0;transform:none;flex:0 0 auto}
+.hero-art .hero-orbit{width:235px;height:235px}
+.hero-art .orbit-two{width:285px;height:195px}
+.hero-glow{width:165px;height:165px}
+.hero-content{order:1;width:100%;max-width:830px;margin:0 auto; text-align:center}
+.hero-content .eyebrow{justify-content:center}
+.hero-content h1{font-weight:600;font-size:clamp(36px,4.8vw,56px);line-height:1.12;margin:8px 0 12px}
+.hero-content h1 em,.section-heading h2 em{font-weight:600}
+.hero-content>p{max-width:690px;margin:0 auto;font-size:14px;line-height:1.8;color:#5f4653;font-weight:600}
+.hero-caption{position:static;order:2;margin:17px auto 0;transform:none;text-align:center;color:#795969;font-weight:700}
+
+/* Textos generales: más contraste y una negrilla moderada para facilitar la lectura. */
+.announcement{font-weight:700;color:#fff}
+.brand-copy small{color:#785c6c;font-weight:600}
+.live-pill,.stock-indicator{color:#5e4854;font-weight:700}
+.hero .eyebrow,.eyebrow{font-weight:800}
+.section-heading h2,.contact-copy h2,.notify-strip h2{font-weight:600}
+.section-heading p,.contact-copy p,.notify-strip p,.product-description,.catalog-footnote,.footer>p,.footer>span,.notice-empty,.notice-item p,.notice-head small,.notice-item small,.permission-help{color:#624b58;font-weight:600}
+.product-info h3,.empty-state h3{font-weight:600}
+.product-category{color:#8f4f70;font-weight:800}
+.available{color:#276a4b;font-weight:700}
+.unavailable{color:#9d285b;font-weight:700}
+.price{font-weight:800}
+.search-box input{font-weight:600}
+.search-box input::placeholder{color:#71606a;opacity:1}
+.sort-box{color:#644b59;font-weight:600}
+.sort-box select{color:#85345f;font-weight:700}
+.refresh-button{font-weight:700}
+.contact-button,.notify-strip button,.buy-button,.enable-notices{font-weight:800}
+.footer .brand-copy small{color:#785c6c;font-weight:700}
+
+.terms-section{margin:10px clamp(18px,4vw,55px) 25px;padding:27px clamp(18px,3vw,32px);border:1px solid #e9cfdb;border-radius:14px;background:#fffdf9;box-shadow:0 5px 18px rgba(111,52,81,.05)}
+.terms-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;padding-bottom:17px;margin-bottom:16px;border-bottom:1px solid #ead6df}
+.terms-heading h2{margin:7px 0 0;color:#8f2e63;font-size:clamp(22px,2.5vw,29px);font-weight:800;line-height:1.25}
+.terms-sync-status{display:inline-flex;align-items:center;gap:8px;white-space:nowrap;color:#6b5360;font-size:11px;font-weight:700}
+.terms-sync-status .live-dot{background:#b4a3ac;width:8px;height:8px}
+.terms-sync-status.is-live .live-dot{background:#31845a;box-shadow:0 0 0 3px #dff2e7}
+.terms-body{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 24px}
+.terms-body p{margin:0;padding:12px 14px;border-radius:9px;background:#fff7fa;color:#4d3442;font-size:13px;line-height:1.75;font-weight:600;white-space:pre-line;overflow-wrap:anywhere}
+.terms-body p:first-child{border-left:3px solid #bf4b83}
+.terms-sync-note{margin:17px 0 0;color:#6d5361;font-size:11px;line-height:1.6;font-weight:600}
+
+@media(max-width:700px){
+  .hero{margin:14px 12px 0;padding:14px 15px 22px;border-radius:13px}
+  .hero-art{height:166px;margin:-2px auto 0}
+  .hero-art .hero-orbit{width:165px;height:165px}
+  .hero-art .orbit-two{width:198px;height:142px}
+  .hero-glow{width:120px;height:120px}
+  .floating-tag{font-size:8px;padding:7px 9px}
+  .tag-top{top:7px;right:calc(50% - 121px)}
+  .tag-bottom{bottom:3px;left:calc(50% - 126px)}
+  .hero-content h1{font-size:clamp(29px,8vw,37px);margin:7px 0 10px}
+  .hero-content>p{font-size:12px;line-height:1.7}
+  .hero-caption{margin-top:13px;font-size:7px;letter-spacing:.12em}
+  .terms-section{margin:8px 12px 20px;padding:20px 15px;border-radius:12px}
+  .terms-heading{align-items:flex-start;flex-direction:column;gap:10px;padding-bottom:13px}
+  .terms-heading h2{font-size:22px}
+  .terms-sync-status{font-size:10px}
+  .terms-body{grid-template-columns:1fr;gap:9px}
+  .terms-body p{font-size:12px;padding:11px 12px;line-height:1.7}
+  .terms-sync-note{font-size:11px}
+}
+@media(max-width:380px){
+  .hero-art{height:150px}
+  .hero-art .hero-orbit{width:150px;height:150px}
+  .hero-art .orbit-two{width:180px;height:130px}
+  .hero-glow{width:108px;height:108px}
+  .tag-top{right:calc(50% - 111px)}
+  .tag-bottom{left:calc(50% - 116px)}
+  .terms-sync-status{white-space:normal}
+}
