@@ -1,9 +1,11 @@
 'use client';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { Bell, BellRing, Search, Sparkles, PackageOpen, Radio, CircleCheck, X, RefreshCw, MessageCircle, Instagram, Download, Check } from 'lucide-react';
+import { Bell, BellRing, Search, Sparkles, PackageOpen, Radio, CircleCheck, X, RefreshCw, MessageCircle, Instagram, Download, Check, ZoomIn, ChevronLeft, ChevronRight } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import type { TouchEvent } from 'react';
 
-type Product = { id: string; name: string; description: string | null; quantity: number; price: number; entry_date: string; image_url: string | null; subcategory: string | null; created_at?: string };
+type Product = { id: string; name: string; description: string | null; quantity: number; price: number; entry_date: string; image_url: string | null; image_urls?: string[] | null; subcategory: string | null; created_at?: string };
 
 const ALL_SUBCATEGORIES = '__all__';
 const UNCATEGORIZED_SUBCATEGORY = '__uncategorized__';
@@ -25,6 +27,97 @@ const DEFAULT_TERMS: CatalogTerms = {
 };
 
 const money = (v: number) => new Intl.NumberFormat('es-VE', { style: 'currency', currency: 'USD' }).format(Number(v || 0));
+
+type ProductCardProps = { product: Product; whatsappUrl: string };
+
+/** Galería accesible de un producto: deslizar para cambiar, o usar los controles y la lupa. */
+function ProductCard({ product: p, whatsappUrl }: ProductCardProps) {
+  const galleryImages = useMemo(() => {
+    const sources = [p.image_url, ...(Array.isArray(p.image_urls) ? p.image_urls : [])];
+    return [...new Set(sources.map(value => (value || '').trim()).filter(Boolean))];
+  }, [p.image_url, p.image_urls]);
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [zoomOpen, setZoomOpen] = useState(false);
+  const touchStartX = useRef<number | null>(null);
+  const currentImage = galleryImages[activeImageIndex] || '';
+  const hasMultipleImages = galleryImages.length > 1;
+
+  useEffect(() => {
+    setActiveImageIndex(0);
+  }, [p.id, galleryImages.join('\u001f')]);
+
+  useEffect(() => {
+    if (!zoomOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setZoomOpen(false);
+      if (event.key === 'ArrowRight' && hasMultipleImages) setActiveImageIndex(index => (index + 1) % galleryImages.length);
+      if (event.key === 'ArrowLeft' && hasMultipleImages) setActiveImageIndex(index => (index - 1 + galleryImages.length) % galleryImages.length);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [zoomOpen, hasMultipleImages, galleryImages.length]);
+
+  const changeImage = (step: number) => {
+    if (!hasMultipleImages) return;
+    setActiveImageIndex(index => (index + step + galleryImages.length) % galleryImages.length);
+  };
+  const handleTouchStart = (event: TouchEvent<HTMLElement>) => {
+    touchStartX.current = event.changedTouches[0]?.clientX ?? null;
+  };
+  const handleTouchEnd = (event: TouchEvent<HTMLElement>) => {
+    const startX = touchStartX.current;
+    const endX = event.changedTouches[0]?.clientX;
+    touchStartX.current = null;
+    if (startX === null || endX === undefined || !hasMultipleImages) return;
+    const delta = endX - startX;
+    if (Math.abs(delta) >= 42) changeImage(delta < 0 ? 1 : -1);
+  };
+
+  return <>
+    <article className="product-card">
+      <div className={`product-image ${hasMultipleImages ? 'has-gallery' : ''}`} onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+        {currentImage ? <img key={currentImage} src={currentImage} alt={`${p.name}${hasMultipleImages ? ` · foto ${activeImageIndex + 1} de ${galleryImages.length}` : ''}`} loading="lazy" draggable={false} /> : <div className="image-placeholder"><span>B<span>&amp;</span>G</span><small>ESENCIALES DE BELLEZA</small></div>}
+        {currentImage && <button type="button" className="image-zoom-button" onClick={() => setZoomOpen(true)} aria-label={`Ampliar foto de ${p.name}`} title="Ampliar imagen"><ZoomIn size={17} strokeWidth={2.2}/></button>}
+        {hasMultipleImages && <>
+          <button type="button" className="gallery-arrow gallery-arrow-prev" onClick={() => changeImage(-1)} aria-label={`Foto anterior de ${p.name}`}><ChevronLeft size={19}/></button>
+          <button type="button" className="gallery-arrow gallery-arrow-next" onClick={() => changeImage(1)} aria-label={`Foto siguiente de ${p.name}`}><ChevronRight size={19}/></button>
+          <div className="gallery-dots" aria-label={`Foto ${activeImageIndex + 1} de ${galleryImages.length}`}>
+            {galleryImages.map((src, index) => <button key={`${src}-${index}`} type="button" className={`gallery-dot ${index === activeImageIndex ? 'is-active' : ''}`} onClick={() => setActiveImageIndex(index)} aria-label={`Ver foto ${index + 1} de ${p.name}`} aria-pressed={index === activeImageIndex}/>) }
+          </div>
+          <span className="gallery-counter">{activeImageIndex + 1}/{galleryImages.length}</span>
+        </>}
+        {p.created_at && Date.now() - new Date(p.created_at).getTime() < 7 * 86400000 && <span className="new-badge">NUEVO ✦</span>}
+        {p.quantity <= 0 && <span className="sold-badge">AGOTADO</span>}
+      </div>
+      <div className="product-info">
+        <span className="product-category">{p.subcategory?.trim() || 'BABI & GLOW · CATÁLOGO'}</span>
+        <h3>{p.name}</h3>
+        <p className="product-description">{p.description || 'Un esencial para tu rutina de belleza.'}</p>
+        <div className="product-bottom"><div><strong className="price">{money(p.price)}</strong><small className={p.quantity > 0 ? 'available' : 'unavailable'}>{p.quantity > 0 ? `${p.quantity} disponibles` : 'Sin existencias'}</small></div><span className="product-sparkle"><Sparkles size={17}/></span></div>
+        <a className="buy-button" href={whatsappUrl} target="_blank" rel="noopener noreferrer" aria-label={`Consultar compra de ${p.name} por WhatsApp`}><MessageCircle size={16}/> Comprar por WhatsApp</a>
+      </div>
+    </article>
+    {zoomOpen && currentImage && typeof document !== 'undefined' && createPortal(
+      <div className="image-lightbox" role="presentation" onClick={() => setZoomOpen(false)} onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+        <section className="image-lightbox-dialog" role="dialog" aria-modal="true" aria-label={`Fotos ampliadas de ${p.name}`} onClick={event => event.stopPropagation()}>
+          <button type="button" className="image-lightbox-close" onClick={() => setZoomOpen(false)} aria-label="Cerrar imagen ampliada"><X size={23}/></button>
+          {hasMultipleImages && <button type="button" className="image-lightbox-arrow image-lightbox-prev" onClick={() => changeImage(-1)} aria-label="Foto anterior"><ChevronLeft size={28}/></button>}
+          <img className="image-lightbox-photo" key={currentImage} src={currentImage} alt={`${p.name} · imagen ampliada`} draggable={false}/>
+          {hasMultipleImages && <button type="button" className="image-lightbox-arrow image-lightbox-next" onClick={() => changeImage(1)} aria-label="Foto siguiente"><ChevronRight size={28}/></button>}
+          <div className="image-lightbox-caption"><strong>{p.name}</strong>{hasMultipleImages && <span>Foto {activeImageIndex + 1} de {galleryImages.length} · desliza para cambiar</span>}</div>
+        </section>
+      </div>,
+      document.body
+    )}
+  </>;
+}
+
+
 
 /**
  * Android mobile browsers only reliably display persistent notifications created
@@ -91,7 +184,7 @@ export default function CatalogPage() {
 
   const loadProducts = useCallback(async () => {
     if (!supabase) { setError('Faltan las variables de Supabase. Configura la URL y la clave publicable en Vercel.'); setLoading(false); return; }
-    const { data, error: e } = await supabase.from('products').select('id,name,description,quantity,price,entry_date,image_url,subcategory,created_at').order('created_at', { ascending: false });
+    const { data, error: e } = await supabase.from('products').select('id,name,description,quantity,price,entry_date,image_url,image_urls,subcategory,created_at').order('created_at', { ascending: false });
     if (e) setError(`No se pudieron cargar los productos: ${e.message}`);
     else { setProducts((data || []) as Product[]); setError(''); }
     setLoading(false);
@@ -325,7 +418,7 @@ export default function CatalogPage() {
       </div>
       <div className="hero-content">
         <span className="eyebrow"><span/> EL UNIVERSO BABI & GLOW</span>
-        <h1>Tu próximo favorito<br/>está <em>por descubrir.</em></h1>
+        <h1>Tu próximo favorito<br/>estas <em>por descubrir.</em></h1>
         <p>Explora nuestra selección de belleza y cuidado personal. Mira precios, detalles y disponibilidad actualizados desde nuestro inventario.</p>
       </div>
       <div className="hero-caption">BELLEZA EN CADA DETALLE <span>✦</span></div>
@@ -335,7 +428,7 @@ export default function CatalogPage() {
       <div className="catalog-tools"><label className="search-box"><Search size={18}/><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Buscar por nombre o característica..."/><kbd>⌕</kbd></label><label className="sort-box"><span>Ordenar:</span><select value={sortBy} onChange={e => setSortBy(e.target.value as typeof sortBy)} aria-label="Filtrar productos"><option value="recent">Más recientes</option><option value="name">Nombre (A-Z)</option><option value="price-asc">Precio: menor a mayor</option><option value="price-desc">Precio: mayor a menor</option><option value="stock-desc">Stock: mayor a menor</option><option value="stock-asc">Stock: menor a mayor</option></select></label><button className="refresh-button" onClick={() => { setLoading(true); void loadProducts(); }}><RefreshCw size={16}/> Actualizar</button></div>
       {(availableSubcategories.length > 0 || hasUncategorizedProducts) && <nav className="subcategory-filters" aria-label="Filtrar productos por subtipo"><span className="subcategory-filter-label">Subtipos</span><div className="subcategory-filter-list"><button type="button" className={`subcategory-filter ${activeSubcategory === ALL_SUBCATEGORIES ? 'is-active' : ''}`} aria-pressed={activeSubcategory === ALL_SUBCATEGORIES} onClick={() => setActiveSubcategory(ALL_SUBCATEGORIES)}>Todos</button>{availableSubcategories.map(category => <button type="button" key={normalizeSubcategory(category)} className={`subcategory-filter ${normalizeSubcategory(activeSubcategory) === normalizeSubcategory(category) ? 'is-active' : ''}`} aria-pressed={normalizeSubcategory(activeSubcategory) === normalizeSubcategory(category)} onClick={() => setActiveSubcategory(category)}>{category}</button>)}{hasUncategorizedProducts && <button type="button" className={`subcategory-filter ${activeSubcategory === UNCATEGORIZED_SUBCATEGORY ? 'is-active' : ''}`} aria-pressed={activeSubcategory === UNCATEGORIZED_SUBCATEGORY} onClick={() => setActiveSubcategory(UNCATEGORIZED_SUBCATEGORY)}>Sin subtipo</button>}</div></nav>}
       {error && <div className="error-banner">{error}</div>}
-      {loading ? <div className="loading-grid">{[1,2,3,4].map(n => <div className="skeleton-card" key={n}><div/><span/><span/></div>)}</div> : filtered.length === 0 ? <div className="empty-state"><div className="empty-symbol"><PackageOpen size={27}/></div><h3>{query ? 'No encontramos coincidencias' : activeSubcategory !== ALL_SUBCATEGORIES ? 'Todavía no hay productos en este subtipo' : 'Pronto habrá algo especial'}</h3><p>{query ? 'Prueba con otro nombre, característica o subtipo.' : activeSubcategory !== ALL_SUBCATEGORIES ? 'Cuando el inventario tenga productos con esta etiqueta, aparecerán aquí automáticamente.' : 'Los nuevos productos aparecerán aquí automáticamente cuando se agreguen al inventario.'}</p>{(query || activeSubcategory !== ALL_SUBCATEGORIES) && <button className="text-button" onClick={() => { setQuery(''); setActiveSubcategory(ALL_SUBCATEGORIES); }}>Mostrar todos los productos</button>}</div> : <div className="product-grid">{filtered.map(p => <article className="product-card" key={p.id}><div className="product-image">{p.image_url ? <img src={p.image_url} alt={p.name} loading="lazy"/> : <div className="image-placeholder"><span>B<span>&</span>G</span><small>ESENCIALES DE BELLEZA</small></div>}{p.created_at && Date.now() - new Date(p.created_at).getTime() < 7 * 86400000 && <span className="new-badge">NUEVO ✦</span>}{p.quantity <= 0 && <span className="sold-badge">AGOTADO</span>}</div><div className="product-info"><span className="product-category">{p.subcategory?.trim() || 'BABI & GLOW · CATÁLOGO'}</span><h3>{p.name}</h3><p className="product-description">{p.description || 'Un esencial para tu rutina de belleza.'}</p><div className="product-bottom"><div><strong className="price">{money(p.price)}</strong><small className={p.quantity > 0 ? 'available' : 'unavailable'}>{p.quantity > 0 ? `${p.quantity} disponibles` : 'Sin existencias'}</small></div><span className="product-sparkle"><Sparkles size={17}/></span></div><a className="buy-button" href={purchaseWhatsAppUrl(p.name)} target="_blank" rel="noopener noreferrer" aria-label={`Consultar compra de ${p.name} por WhatsApp`}><MessageCircle size={16}/> Comprar por WhatsApp</a></div></article>)}</div>}
+      {loading ? <div className="loading-grid">{[1,2,3,4].map(n => <div className="skeleton-card" key={n}><div/><span/><span/></div>)}</div> : filtered.length === 0 ? <div className="empty-state"><div className="empty-symbol"><PackageOpen size={27}/></div><h3>{query ? 'No encontramos coincidencias' : activeSubcategory !== ALL_SUBCATEGORIES ? 'Todavía no hay productos en este subtipo' : 'Pronto habrá algo especial'}</h3><p>{query ? 'Prueba con otro nombre, característica o subtipo.' : activeSubcategory !== ALL_SUBCATEGORIES ? 'Cuando el inventario tenga productos con esta etiqueta, aparecerán aquí automáticamente.' : 'Los nuevos productos aparecerán aquí automáticamente cuando se agreguen al inventario.'}</p>{(query || activeSubcategory !== ALL_SUBCATEGORIES) && <button className="text-button" onClick={() => { setQuery(''); setActiveSubcategory(ALL_SUBCATEGORIES); }}>Mostrar todos los productos</button>}</div> : <div className="product-grid">{filtered.map(p => <ProductCard key={p.id} product={p} whatsappUrl={purchaseWhatsAppUrl(p.name)} />)}</div>}
       <div className="catalog-footnote"><Radio size={15}/><span>El catálogo se sincroniza automáticamente con el inventario principal.</span></div>
     </section>
     {permission !== 'granted' && <section className="notify-strip"><div className="notify-icon"><BellRing size={22}/></div><div><span className="eyebrow">NOVEDADES DE BABI & GLOW</span><h2>Las novedades, primero.</h2><p>Activa las notificaciones para enterarte cuando lleguen nuevos productos.</p></div><button onClick={enableNotifications}>Avisarme de novedades <span>↗</span></button></section>}
