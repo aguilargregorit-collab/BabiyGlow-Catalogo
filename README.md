@@ -9,16 +9,18 @@ Segunda aplicación Next.js que lee la tabla `public.products` de la app de inve
 - Al detectar un producto nuevo muestra un aviso emergente dentro de la página (también en Android) y, si la persona concedió permiso, intenta mostrar una notificación del sistema mediante el service worker.
 - Diseño responsive con identidad visual Babi&Glow: rosa, fucsia y crema, usando el mismo logo oficial en el encabezado, el pie y los iconos de la PWA.
 - Configuración PWA para instalar como aplicación independiente desde Chrome Android: manifiesto, iconos y service worker.
+- Sección pública de Términos y condiciones cargada desde `public.catalog_terms`, con suscripción Realtime para que cualquier cambio realizado desde el sistema de inventario se refleje sin recargar el catálogo.
 
 ## Configuración
 1. En Supabase usa el mismo proyecto que utiliza el inventario principal.
-2. Ejecuta `supabase/enable-realtime.sql` en Supabase → SQL Editor. Esto activa los eventos en tiempo real de la tabla `products`.
-3. Crea un repositorio separado en GitHub y sube el contenido de esta carpeta.
-4. Importa ese repositorio en Vercel como otro proyecto Next.js.
-5. En Vercel → Settings → Environment Variables agrega:
+2. Ejecuta `supabase/enable-realtime.sql` en Supabase → SQL Editor para los eventos en tiempo real de `products`.
+3. Ejecuta también `supabase/terms-and-conditions.sql` en el mismo proyecto. Este crea la tabla única `catalog_terms`, carga unas condiciones iniciales editables, permite lectura pública, restringe la escritura a usuarios autenticados y activa Realtime.
+4. Crea un repositorio separado en GitHub y sube el contenido de esta carpeta.
+5. Importa ese repositorio en Vercel como otro proyecto Next.js.
+6. En Vercel → Settings → Environment Variables agrega:
    - `NEXT_PUBLIC_SUPABASE_URL` = la URL del proyecto Supabase.
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY` = la clave publicable `sb_publishable_...` (aunque el nombre heredado diga ANON_KEY) o la clave anon heredada compatible.
-6. Despliega o vuelve a desplegar.
+7. Despliega o vuelve a desplegar.
 
 También puedes usar `cp .env.example .env.local` para desarrollo local. No subas `.env.local` a GitHub.
 
@@ -45,3 +47,14 @@ El esquema de demo del inventario original permite lectura pública. Para un cat
 - Las notificaciones de Android se solicitan mediante el service worker porque el constructor `new Notification()` no está disponible en la mayoría de navegadores móviles.
 - La ventana de instalación se abre al pulsar el botón manual de la cabecera y muestra las ventajas de usar Babi&Glow como aplicación.
 - Las ventanas modales limitan su altura al área visible del dispositivo y permiten desplazamiento en pantallas pequeñas.
+
+
+## Términos y condiciones compartidos
+- El catálogo consulta `public.catalog_terms` (registro con `id = 1`) y escucha sus cambios mediante Supabase Realtime.
+- Los textos iniciales son ejemplos editables y deben ajustarse a las políticas reales de la tienda.
+- La consulta pública solo tiene permiso de lectura. El SQL permite administrar los términos a usuarios autenticados; la futura modificación del sistema de inventario debe editar este registro con una sesión autorizada o con una función de servidor segura. No expongas una clave `service_role` en el frontend.
+- Ejecuta `supabase/terms-and-conditions.sql` una sola vez por entorno de Supabase. Si vuelves a ejecutarlo, conserva el contenido actual gracias al `on conflict do nothing`.
+
+## Cambios visuales de la fase 2
+- Se quitó el botón de exploración del hero y se movió el logo al centro de la parte superior.
+- Se reforzaron el peso tipográfico y el contraste de los textos para facilitar su lectura.
