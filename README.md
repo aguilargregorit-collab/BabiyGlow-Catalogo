@@ -4,7 +4,6 @@ Segunda aplicación Next.js que lee la tabla `public.products` de la app de inve
 
 ## Funciones
 - Catálogo público de productos, fotografía, precio, cantidad disponible y descripción.
-- Galería de fotos por producto: deslizar en móvil, controles laterales, indicadores y lupa para abrir la imagen a pantalla ampliada.
 - Búsqueda por nombre o características.
 - Suscripción Supabase Realtime para INSERT, UPDATE y DELETE en `public.products`.
 - Al detectar un producto nuevo muestra un aviso emergente dentro de la página (también en Android) y, si la persona concedió permiso, intenta mostrar una notificación del sistema mediante el service worker.
@@ -16,13 +15,12 @@ Segunda aplicación Next.js que lee la tabla `public.products` de la app de inve
 1. En Supabase usa el mismo proyecto que utiliza el inventario principal.
 2. Ejecuta `supabase/enable-realtime.sql` en Supabase → SQL Editor para los eventos en tiempo real de `products`.
 3. Ejecuta también `supabase/terms-and-conditions.sql` en el mismo proyecto. Este crea la tabla única `catalog_terms`, carga unas condiciones iniciales editables, permite lectura pública, restringe la escritura a usuarios autenticados y activa Realtime.
-4. Ejecuta `supabase/subcategories.sql` y `supabase/product-galleries.sql` para preparar el campo de subtipos y el almacenamiento de varias imágenes.
-5. Crea un repositorio separado en GitHub y sube el contenido de esta carpeta.
-6. Importa ese repositorio en Vercel como otro proyecto Next.js.
-7. En Vercel → Settings → Environment Variables agrega:
+4. Crea un repositorio separado en GitHub y sube el contenido de esta carpeta.
+5. Importa ese repositorio en Vercel como otro proyecto Next.js.
+6. En Vercel → Settings → Environment Variables agrega:
    - `NEXT_PUBLIC_SUPABASE_URL` = la URL del proyecto Supabase.
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY` = la clave publicable `sb_publishable_...` (aunque el nombre heredado diga ANON_KEY) o la clave anon heredada compatible.
-8. Despliega o vuelve a desplegar.
+7. Despliega o vuelve a desplegar.
 
 También puedes usar `cp .env.example .env.local` para desarrollo local. No subas `.env.local` a GitHub.
 
@@ -32,7 +30,7 @@ También puedes usar `cp .env.example .env.local` para desarrollo local. No suba
 - Esta versión NO envía notificaciones push cuando la página está cerrada o el navegador está detenido. Para notificaciones automáticas en segundo plano hacen falta Web Push, claves VAPID, suscripciones guardadas y un servidor/función que envíe las notificaciones.
 
 ## Estructura de datos esperada
-Usa la misma tabla que el inventario original: `products` con columnas `id`, `name`, `description`, `quantity`, `price`, `entry_date`, `image_url`, `image_urls`, `subcategory`, `created_at`. Los archivos SQL incluidos añaden `subcategory` e `image_urls` sin borrar los productos existentes.
+Usa la misma tabla que el inventario original: `products` con columnas `id`, `name`, `description`, `quantity`, `price`, `entry_date`, `image_url`, `subcategory`, `created_at`. La columna `subcategory` se añade con el SQL de subtipos incluido.
 
 ## Comprobación de seguridad
 El esquema de demo del inventario original permite lectura pública. Para un catálogo público, la lectura de productos puede ser pública, pero las operaciones de escritura deben quedar limitadas al inventario autenticado. Revisa las políticas RLS antes de usar con datos reales.
@@ -68,15 +66,3 @@ El esquema de demo del inventario original permite lectura pública. Para un cat
 - Cuando un producto reciba una etiqueta en `products.subcategory`, un trigger la registra automáticamente en `catalog_subcategories`. No se crea una tabla de base de datos por cada etiqueta: cada subtipo es una categoría dinámica dentro de una sola tabla.
 - El catálogo genera automáticamente un filtro por cada subtipo que aparece en los productos. Por ejemplo, al asignar `Bodys`, `Baggys` o `Vestidos` aparecerán esos filtros y las tarjetas mostrarán la etiqueta. Los cambios en la etiqueta se reflejan mediante el canal Realtime de `products`.
 - La aplicación del inventario debe guardar la etiqueta en el campo `subcategory` de la fila del producto. Este ZIP deja preparada la base de datos y el catálogo; si el inventario actual todavía no ofrece ese campo en su formulario, habrá que actualizar esa aplicación para que pueda asignarlo.
-
-
-## Galerías de imágenes por producto
-
-- Ejecuta `supabase/product-galleries.sql` una sola vez en el SQL Editor del mismo proyecto de Supabase que usa el inventario. El script añade `products.image_urls` como arreglo de URLs y conserva el campo `image_url` actual como imagen principal heredada.
-- El catálogo muestra `image_url` como portada y combina las URLs de `image_urls`, eliminando duplicados. Con varias fotos se puede deslizar en Android/iPhone, usar flechas o indicadores; la lupa abre la vista ampliada, que también permite cambiar de foto y cerrarse con Escape en escritorio.
-- La columna admite URLs de imágenes ya almacenadas. Para gestionar la galería desde la pantalla del sistema de inventario, ese formulario deberá permitir guardar una lista de URLs en `image_urls` y mantener `image_url` como portada. Este ZIP actualiza el catálogo y el esquema de Supabase; no modifica la interfaz del inventario.
-
-## Fase 2: subcategorías, galerías, términos y contador
-Ejecuta una sola vez `supabase/phase2-catalog-management.sql` en el mismo proyecto Supabase que usa el inventario. Este SQL añade `products.subcategory`, `products.image_urls`, habilita la edición compartida de términos y crea métricas aproximadas de visitantes únicos, visitantes del día y navegadores activos en los últimos 90 segundos. El contador comienza cuando se instala esta migración y se despliega este catálogo; no puede recuperar visitas históricas anteriores.
-
-**Seguridad:** el inventario de demostración usa un inicio por nombre sin Supabase Auth. Por eso la migración deja la escritura de términos habilitada para la clave pública del navegador, lo cual no es adecuado para un sitio comercial público. Antes de uso real, implemente Supabase Auth y restrinja las políticas RLS.
