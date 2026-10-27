@@ -1,7 +1,7 @@
 'use client';
 import { useCallback, useEffect, useMemo, useRef, useState, type TouchEvent } from 'react';
 import { supabase } from '../lib/supabase';
-import { Bell, BellRing, Search, Sparkles, PackageOpen, Radio, CircleCheck, X, RefreshCw, MessageCircle, Instagram, Download, Check, ZoomIn, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Bell, BellRing, Search, Sparkles, PackageOpen, Radio, CircleCheck, X, RefreshCw, MessageCircle, Instagram, Download, Check, ZoomIn, ChevronLeft, ChevronRight, Eye, Users } from 'lucide-react';
 import { createPortal } from 'react-dom';
 
 type Product = { id: string; name: string; description: string | null; quantity: number; price: number; entry_date: string; image_url: string | null; image_urls?: string[] | null; subcategory: string | null; created_at?: string };
@@ -11,6 +11,7 @@ const UNCATEGORIZED_SUBCATEGORY = '__uncategorized__';
 const normalizeSubcategory = (value: string | null | undefined) => (value || '').trim().toLocaleLowerCase('es');
 type Notice = { id: string; title: string; body: string; time: string };
 type CatalogTerms = { id: number; title: string; content: string; updated_at?: string };
+type CatalogMetrics = { total_visitors: number; visitors_today: number; online_now: number };
 
 const DEFAULT_TERMS: CatalogTerms = {
   id: 1,
@@ -158,6 +159,35 @@ export default function CatalogPage() {
   const [connected, setConnected] = useState(false);
   const [terms, setTerms] = useState<CatalogTerms>(DEFAULT_TERMS);
   const [termsConnected, setTermsConnected] = useState(false);
+  const [visitorMetrics, setVisitorMetrics] = useState<CatalogMetrics>({ total_visitors: 0, visitors_today: 0, online_now: 0 });
+
+  useEffect(() => {
+    if (!supabase) return;
+    let visitorId = '';
+    try {
+      visitorId = localStorage.getItem('babiglow-visitor-id') || '';
+      if (!visitorId) {
+        visitorId = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+          ? crypto.randomUUID()
+          : `bg-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        localStorage.setItem('babiglow-visitor-id', visitorId);
+      }
+    } catch {
+      visitorId = `bg-session-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    }
+    let active = true;
+    const updatePresence = async () => {
+      const { data, error: metricsError } = await supabase!.rpc('register_catalog_presence', { p_visitor_id: visitorId });
+      if (!active || metricsError || !data) return;
+      const result = Array.isArray(data) ? data[0] : data;
+      if (result) setVisitorMetrics({ total_visitors: Number(result.total_visitors || 0), visitors_today: Number(result.visitors_today || 0), online_now: Number(result.online_now || 0) });
+    };
+    void updatePresence();
+    const timer = window.setInterval(() => void updatePresence(), 30000);
+    const onVisible = () => { if (document.visibilityState === 'visible') void updatePresence(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => { active = false; window.clearInterval(timer); document.removeEventListener('visibilitychange', onVisible); };
+  }, []);
 
   const loadTerms = useCallback(async () => {
     if (!supabase) return;
@@ -419,6 +449,6 @@ export default function CatalogPage() {
         {(terms.content || DEFAULT_TERMS.content).split(/\n\s*\n/).filter(Boolean).map((paragraph, index) => <p key={index}>{paragraph}</p>)}
       </div>
     </section>
-    <footer className="footer"><a className="brand footer-brand" href="#inicio"><img className="brand-logo" src="/logo-babi-glow.jpg" alt="Logo Babi&Glow"/><span className="brand-copy"><strong>BABI&GLOW</strong><small>Tu arte, tu estilo, tu esencia</small></span></a><p>Hecho para brillar, todos los días.</p><span>© {new Date().getFullYear()} Babi&Glow</span></footer>
+    <div className="visitor-counter" aria-label="Estadísticas de visitas"><span><Eye size={14}/> Visitas totales: <strong>{visitorMetrics.total_visitors.toLocaleString('es-VE')}</strong></span><span><Users size={14}/> Hoy: <strong>{visitorMetrics.visitors_today.toLocaleString('es-VE')}</strong></span><span><span className="live-dot"/> En línea: <strong>{visitorMetrics.online_now.toLocaleString('es-VE')}</strong></span></div><footer className="footer"><a className="brand footer-brand" href="#inicio"><img className="brand-logo" src="/logo-babi-glow.jpg" alt="Logo Babi&Glow"/><span className="brand-copy"><strong>BABI&GLOW</strong><small>Tu arte, tu estilo, tu esencia</small></span></a><p>Hecho para brillar, todos los días.</p><span>© {new Date().getFullYear()} Babi&Glow</span></footer>
   </main>;
 }
