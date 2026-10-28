@@ -28,10 +28,10 @@ const DEFAULT_TERMS: CatalogTerms = {
 
 const money = (v: number) => new Intl.NumberFormat('es-VE', { style: 'currency', currency: 'USD' }).format(Number(v || 0));
 
-type ProductCardProps = { product: Product };
+type ProductCardProps = { product: Product; whatsappUrl: string };
 
 /** Galería accesible de un producto: deslizar para cambiar, o usar los controles y la lupa. */
-function ProductCard({ product: p }: ProductCardProps) {
+function ProductCard({ product: p, whatsappUrl }: ProductCardProps) {
   const galleryImages = useMemo(() => {
     const sources = [p.image_url, ...(Array.isArray(p.image_urls) ? p.image_urls : [])];
     return [...new Set(sources.map(value => (value || '').trim()).filter(Boolean))];
@@ -41,43 +41,6 @@ function ProductCard({ product: p }: ProductCardProps) {
   const touchStartX = useRef<number | null>(null);
   const currentImage = galleryImages[activeImageIndex] || '';
   const hasMultipleImages = galleryImages.length > 1;
-  const [sharingProduct, setSharingProduct] = useState(false);
-
-  const handleWhatsAppPurchase = async () => {
-    const phone = '584248316536';
-    const photoUrl = galleryImages[0] || '';
-    const message = `¡Hola! Vi ${p.name} en el catálogo de Babi&Glow y me gustaría adquirirlo. ¿Me podrían confirmar los detalles del pago y del retiro? ¡Gracias! 🌸`;
-
-    // WhatsApp's wa.me link cannot attach a file directly. On supported phones,
-    // use the native share sheet to send the actual product photo and text together.
-    if (photoUrl && typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
-      setSharingProduct(true);
-      try {
-        const response = await fetch(photoUrl, { mode: 'cors' });
-        if (!response.ok) throw new Error('No se pudo descargar la imagen');
-        const blob = await response.blob();
-        const mime = blob.type || 'image/jpeg';
-        const extension = mime.includes('png') ? 'png' : mime.includes('webp') ? 'webp' : 'jpg';
-        const file = new File([blob], `babiglow-${p.id}.${extension}`, { type: mime });
-        if (typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })) {
-          try {
-            await navigator.share({ files: [file], title: p.name, text: message });
-            return;
-          } catch (error) {
-            if (error instanceof Error && error.name === 'AbortError') return;
-            // Fall through to WhatsApp text + direct image link.
-          }
-        }
-      } catch {
-        // Some browsers or image hosts block cross-origin file sharing; use link fallback.
-      } finally {
-        setSharingProduct(false);
-      }
-    }
-
-    const fallbackMessage = photoUrl ? `${message}\nFoto del producto: ${photoUrl}` : message;
-    window.location.href = `https://wa.me/${phone}?text=${encodeURIComponent(fallbackMessage)}`;
-  };
 
   useEffect(() => {
     setActiveImageIndex(0);
@@ -136,7 +99,7 @@ function ProductCard({ product: p }: ProductCardProps) {
         <h3>{p.name}</h3>
         <p className="product-description">{p.description || 'Un esencial para tu rutina de belleza.'}</p>
         <div className="product-bottom"><div><strong className="price">{money(p.price)}</strong><small className={p.quantity > 0 ? 'available' : 'unavailable'}>{p.quantity > 0 ? `${p.quantity} disponibles` : 'Sin existencias'}</small></div><span className="product-sparkle"><Sparkles size={17}/></span></div>
-        <button type="button" className="buy-button" onClick={() => void handleWhatsAppPurchase()} disabled={sharingProduct} aria-label={`Consultar compra de ${p.name} por WhatsApp`}><MessageCircle size={16}/> {sharingProduct ? 'Preparando foto…' : 'Comprar por WhatsApp'}</button>
+        <a className="buy-button" href={whatsappUrl} target="_blank" rel="noopener noreferrer" aria-label={`Consultar compra de ${p.name} por WhatsApp`}><MessageCircle size={16}/> Comprar por WhatsApp</a>
       </div>
     </article>
     {zoomOpen && currentImage && typeof document !== 'undefined' && createPortal(
@@ -268,6 +231,43 @@ export default function CatalogPage() {
     void loadTodayEvent();
     const channel = supabase.channel('catalog-calendar-events').on('postgres_changes',{event:'*',schema:'public',table:'calendar_events'},()=>{void loadTodayEvent();}).subscribe();
     return () => { alive = false; void supabase?.removeChannel(channel); };
+  }, []);
+
+  // Presencia del catálogo: registra este navegador y renueva su latido cada 30 s.
+  // El inventario cuenta como "en línea" a quienes reportaron actividad en los últimos 90 s.
+  useEffect(() => {
+    if (!supabase) return;
+    let visitorId = '';
+    try {
+      visitorId = window.localStorage.getItem('babiglow-catalog-visitor-id') || '';
+      if (!visitorId) {
+        visitorId = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+          ? crypto.randomUUID()
+          : `bg-${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
+        window.localStorage.setItem('babiglow-catalog-visitor-id', visitorId);
+      }
+    } catch {
+      // Si el almacenamiento está bloqueado, esta pestaña conserva un identificador temporal.
+      visitorId = `bg-session-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    }
+
+    let disposed = false;
+    const reportPresence = async () => {
+      if (disposed || document.visibilityState === 'hidden') return;
+      const { error } = await supabase!.rpc('register_catalog_presence', { p_visitor_id: visitorId });
+      if (error) console.warn('No se pudo actualizar la presencia del catálogo:', error.message);
+    };
+    void reportPresence();
+    const timer = window.setInterval(() => { void reportPresence(); }, 30_000);
+    const onVisibility = () => { if (document.visibilityState === 'visible') void reportPresence(); };
+    window.addEventListener('focus', reportPresence);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      disposed = true;
+      window.clearInterval(timer);
+      window.removeEventListener('focus', reportPresence);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
   }, []);
 
   useEffect(() => {
@@ -429,6 +429,10 @@ export default function CatalogPage() {
     }
   };
   const dismissNotice = (id: string) => setNotices(prev => prev.filter(n => n.id !== id));
+  const purchaseWhatsAppUrl = (productName: string) => {
+    const message = `¡Hola! Vi ${productName} en el catálogo de Babi&Glow y me gustaría adquirirlo. ¿Me podrían confirmar los detalles del pago y del retiro? ¡Gracias! 🌸`;
+    return `https://wa.me/584248316536?text=${encodeURIComponent(message)}`;
+  };
 
   return <main className="page-shell">
     {showEventWelcome && todayEvent && <div className={`event-welcome-overlay event-theme-${todayEvent.theme}`} role="dialog" aria-modal="true" aria-label={todayEvent.title}><div className="event-welcome-card"><div className="event-welcome-sparkles" aria-hidden="true">{todayEvent.theme==='christmas'?'❄️ 🎄 ✨':todayEvent.theme==='halloween'?'🎃 🦇 👻':todayEvent.theme==='hearts'?'💗 💖 ✨':todayEvent.theme==='sparkles'?'✨ ✨ ✨':'🎉 🎊 ✨'}</div><p className="event-welcome-eyebrow">UN DÍA ESPECIAL EN BABI&GLOW</p><h2>{todayEvent.title}</h2><p>{todayEvent.description || '¡Nos alegra compartir esta fecha especial contigo!'}</p><button type="button" onClick={()=>{setShowEventWelcome(false);try{sessionStorage.setItem(`babiglow-event-welcome-${todayEvent.id}-${todayEvent.event_date}`,'1')}catch{}}}>Entrar al catálogo ✨</button></div></div>}
@@ -461,7 +465,7 @@ export default function CatalogPage() {
       <div className="catalog-tools"><label className="search-box"><Search size={18}/><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Buscar por nombre o característica..."/><kbd>⌕</kbd></label><label className="sort-box"><span>Ordenar:</span><select value={sortBy} onChange={e => setSortBy(e.target.value as typeof sortBy)} aria-label="Filtrar productos"><option value="recent">Más recientes</option><option value="name">Nombre (A-Z)</option><option value="price-asc">Precio: menor a mayor</option><option value="price-desc">Precio: mayor a menor</option><option value="stock-desc">Stock: mayor a menor</option><option value="stock-asc">Stock: menor a mayor</option></select></label><button className="refresh-button" onClick={() => { setLoading(true); void loadProducts(); }}><RefreshCw size={16}/> Actualizar</button></div>
       {(availableSubcategories.length > 0 || hasUncategorizedProducts) && <nav className="subcategory-filters" aria-label="Filtrar productos por subtipo"><span className="subcategory-filter-label">Subtipos</span><div className="subcategory-filter-list"><button type="button" className={`subcategory-filter ${activeSubcategory === ALL_SUBCATEGORIES ? 'is-active' : ''}`} aria-pressed={activeSubcategory === ALL_SUBCATEGORIES} onClick={() => setActiveSubcategory(ALL_SUBCATEGORIES)}>Todos</button>{availableSubcategories.map(category => <button type="button" key={normalizeSubcategory(category)} className={`subcategory-filter ${normalizeSubcategory(activeSubcategory) === normalizeSubcategory(category) ? 'is-active' : ''}`} aria-pressed={normalizeSubcategory(activeSubcategory) === normalizeSubcategory(category)} onClick={() => setActiveSubcategory(category)}>{category}</button>)}{hasUncategorizedProducts && <button type="button" className={`subcategory-filter ${activeSubcategory === UNCATEGORIZED_SUBCATEGORY ? 'is-active' : ''}`} aria-pressed={activeSubcategory === UNCATEGORIZED_SUBCATEGORY} onClick={() => setActiveSubcategory(UNCATEGORIZED_SUBCATEGORY)}>Sin subtipo</button>}</div></nav>}
       {error && <div className="error-banner">{error}</div>}
-      {loading ? <div className="loading-grid">{[1,2,3,4].map(n => <div className="skeleton-card" key={n}><div/><span/><span/></div>)}</div> : filtered.length === 0 ? <div className="empty-state"><div className="empty-symbol"><PackageOpen size={27}/></div><h3>{query ? 'No encontramos coincidencias' : activeSubcategory !== ALL_SUBCATEGORIES ? 'Todavía no hay productos en este subtipo' : 'Pronto habrá algo especial'}</h3><p>{query ? 'Prueba con otro nombre, característica o subtipo.' : activeSubcategory !== ALL_SUBCATEGORIES ? 'Cuando el inventario tenga productos con esta etiqueta, aparecerán aquí automáticamente.' : 'Los nuevos productos aparecerán aquí automáticamente cuando se agreguen al inventario.'}</p>{(query || activeSubcategory !== ALL_SUBCATEGORIES) && <button className="text-button" onClick={() => { setQuery(''); setActiveSubcategory(ALL_SUBCATEGORIES); }}>Mostrar todos los productos</button>}</div> : <div className="product-grid">{filtered.map(p => <ProductCard key={p.id} product={p} />)}</div>}
+      {loading ? <div className="loading-grid">{[1,2,3,4].map(n => <div className="skeleton-card" key={n}><div/><span/><span/></div>)}</div> : filtered.length === 0 ? <div className="empty-state"><div className="empty-symbol"><PackageOpen size={27}/></div><h3>{query ? 'No encontramos coincidencias' : activeSubcategory !== ALL_SUBCATEGORIES ? 'Todavía no hay productos en este subtipo' : 'Pronto habrá algo especial'}</h3><p>{query ? 'Prueba con otro nombre, característica o subtipo.' : activeSubcategory !== ALL_SUBCATEGORIES ? 'Cuando el inventario tenga productos con esta etiqueta, aparecerán aquí automáticamente.' : 'Los nuevos productos aparecerán aquí automáticamente cuando se agreguen al inventario.'}</p>{(query || activeSubcategory !== ALL_SUBCATEGORIES) && <button className="text-button" onClick={() => { setQuery(''); setActiveSubcategory(ALL_SUBCATEGORIES); }}>Mostrar todos los productos</button>}</div> : <div className="product-grid">{filtered.map(p => <ProductCard key={p.id} product={p} whatsappUrl={purchaseWhatsAppUrl(p.name)} />)}</div>}
       <div className="catalog-footnote"><Radio size={15}/><span>El catálogo se sincroniza automáticamente con el inventario principal.</span></div>
     </section>
     {permission !== 'granted' && <section className="notify-strip"><div className="notify-icon"><BellRing size={22}/></div><div><span className="eyebrow">NOVEDADES DE BABI & GLOW</span><h2>Las novedades, primero.</h2><p>Activa las notificaciones para enterarte cuando lleguen nuevos productos.</p></div><button onClick={enableNotifications}>Avisarme de novedades <span>↗</span></button></section>}
