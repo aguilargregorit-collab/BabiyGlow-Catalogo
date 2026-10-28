@@ -233,6 +233,43 @@ export default function CatalogPage() {
     return () => { alive = false; void supabase?.removeChannel(channel); };
   }, []);
 
+  // Presencia del catálogo: registra este navegador y renueva su latido cada 30 s.
+  // El inventario cuenta como "en línea" a quienes reportaron actividad en los últimos 90 s.
+  useEffect(() => {
+    if (!supabase) return;
+    let visitorId = '';
+    try {
+      visitorId = window.localStorage.getItem('babiglow-catalog-visitor-id') || '';
+      if (!visitorId) {
+        visitorId = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+          ? crypto.randomUUID()
+          : `bg-${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
+        window.localStorage.setItem('babiglow-catalog-visitor-id', visitorId);
+      }
+    } catch {
+      // Si el almacenamiento está bloqueado, esta pestaña conserva un identificador temporal.
+      visitorId = `bg-session-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    }
+
+    let disposed = false;
+    const reportPresence = async () => {
+      if (disposed || document.visibilityState === 'hidden') return;
+      const { error } = await supabase!.rpc('register_catalog_presence', { p_visitor_id: visitorId });
+      if (error) console.warn('No se pudo actualizar la presencia del catálogo:', error.message);
+    };
+    void reportPresence();
+    const timer = window.setInterval(() => { void reportPresence(); }, 30_000);
+    const onVisibility = () => { if (document.visibilityState === 'visible') void reportPresence(); };
+    window.addEventListener('focus', reportPresence);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      disposed = true;
+      window.clearInterval(timer);
+      window.removeEventListener('focus', reportPresence);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, []);
+
   useEffect(() => {
     const handleInstallAvailable = (event: Event) => {
       // Guardar el evento para abrir el diálogo nativo solo después de que el
